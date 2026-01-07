@@ -1,0 +1,19 @@
+init memory 192
+set allocator buddy
+set cache_policy LRU
+set page_policy LRU
+
+read 0
+read 64
+read 128
+read 192
+read 256
+read 320
+read 0
+read 384
+read 64
+read 448
+malloc 50
+write 0
+stats
+exit

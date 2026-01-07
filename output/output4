@@ -1,0 +1,41 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|first_fit|best_fit|worst_fit>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 1024 bytes.
+[System] Buddy Memory Initialized: 1024 bytes (Order 10).
+Physical memory initialized to 1024 bytes.
+> Cache replacement policy set to FIFO for all levels.
+> Page replacement policy set to FIFO.
+> > Allocated block id=1 at address=0x0000
+> Allocated block id=2 at address=0x012c
+> Allocated block id=3 at address=0x0190
+> Allocated block id=4 at address=0x0258
+> Block 1 freed.
+> Block 3 freed.
+> > Allocator set to Linear (best_fit).
+> Allocated block id=5 at address=0x0190
+> Block 5 freed.
+> > Allocator set to Linear (worst_fit).
+> Allocated block id=6 at address=0x02bc
+> > Total memory: 1024
+Used memory: 350
+Internal fragmentation: 0
+External fragmentation: 55%
+Allocation success rate: 100%
+Memory utilization: 34%
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%
+L2 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%
+L3 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%
+----------------------------------
+VM: Hits=0, Faults=0, Disk=0
+> 

@@ -1,0 +1,80 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|first_fit|best_fit|worst_fit>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 1024 bytes.
+[System] Buddy Memory Initialized: 1024 bytes (Order 10).
+Physical memory initialized to 1024 bytes.
+> Allocator set to Linear (first_fit).
+> Cache replacement policy set to FIFO for all levels.
+> Page replacement policy set to FIFO.
+> > Allocated block id=1 at address=0x0000
+> Allocated block id=2 at address=0x0064
+> Allocated block id=3 at address=0x012c
+> Block 2 freed.
+> Block 1 freed.
+> Allocated block id=4 at address=0x0000
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] TLB Hit
+[Cache] L3 Hit
+> > Cache replacement policy set to LRU for all levels.
+> > [MMU] TLB Hit
+[Cache] L1 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L3 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L3 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> > [MMU] TLB Hit
+[Cache] L1 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L3 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> > Total memory: 1024
+Used memory: 390
+Internal fragmentation: 0
+External fragmentation: 33%
+Allocation success rate: 100%
+Memory utilization: 38%
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=20000 | Misses=19000 | Hit Rate=009.52%
+L2 Stats: Hits=10000 | Misses=90000 | Hit Rate=052.63%
+L3 Stats: Hits=40000 | Misses=50000 | Hit Rate=044.44%
+----------------------------------
+VM: Hits=16, Faults=5, Disk=5
+> 

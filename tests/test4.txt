@@ -1,0 +1,20 @@
+init memory 1024
+set cache_policy FIFO
+set page_policy FIFO
+
+malloc 300
+malloc 100
+malloc 200
+malloc 100
+free 1
+free 3
+
+set allocator best_fit
+malloc 150
+free 5
+
+set allocator worst_fit
+malloc 150
+
+stats
+exit

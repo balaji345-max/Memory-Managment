@@ -1,0 +1,20 @@
+init memory 1024
+set allocator buddy
+set cache_policy LFU
+set page_policy FIFO
+
+read 0
+read 0
+read 0
+
+read 64
+read 128
+read 192
+read 256
+
+read 320
+
+read 0
+
+stats
+exit

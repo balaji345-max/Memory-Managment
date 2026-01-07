@@ -1,0 +1,40 @@
+init memory 1024
+set allocator first_fit
+set cache_policy FIFO
+set page_policy FIFO
+
+malloc 100
+malloc 200
+malloc 300
+free 2
+free 1
+malloc 90
+
+read 0
+read 64
+read 128
+read 192
+read 0
+read 256
+read 0
+
+set cache_policy LRU
+
+read 0
+read 64
+read 128
+read 192
+read 0
+read 256
+read 0
+
+read 0
+read 64
+read 0
+read 128
+read 0
+read 192
+read 0
+
+stats
+exit

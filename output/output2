@@ -1,0 +1,48 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|first_fit|best_fit|worst_fit>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 1024 bytes.
+[System] Buddy Memory Initialized: 1024 bytes (Order 10).
+Physical memory initialized to 1024 bytes.
+> Allocator set to Buddy System.
+> Cache replacement policy set to LFU for all levels.
+> Page replacement policy set to FIFO.
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] TLB Hit
+[Cache] L1 Hit
+> [MMU] TLB Hit
+[Cache] L1 Hit
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> > [MMU] TLB Hit
+[Cache] L3 Hit
+> > Total Memory      : 1024
+Allocated Blocks  : 0
+Free Blocks       : 1
+Free Memory       : 1024
+Used Memory       : 0
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=2     | Misses=7     | Hit Rate= 22.22%
+L2 Stats: Hits=0     | Misses=7     | Hit Rate=  0.00%
+L3 Stats: Hits=1     | Misses=6     | Hit Rate= 14.29%
+----------------------------------
+VM: Hits=3, Faults=6, Disk=6
+> 
