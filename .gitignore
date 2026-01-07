@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Build artifacts
+*.o
+*.out
+main
+src/main
+
+# Output files (optional, if generated)
+output/
+
+# Editor configs
+.vscode/
+.idea/
+
