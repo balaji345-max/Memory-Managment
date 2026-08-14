@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <queue>
 #include <string>
 #include <cstdint>
 #include "Cache.h"
@@ -50,12 +51,13 @@ struct PageTableEntry {
 };
 
 // Virtual Memory Manager and Memory Management Unit (MMU) simulator.
-// Handles address translation, page fault servicing, page eviction (FIFO/LRU/Clock),
-// and cache invalidation on page eviction.
+// Handles address translation, page fault servicing, free frame management via free list,
+// page eviction (FIFO/LRU/Clock), and cache invalidation on page eviction.
 class VirtualMemory {
 private:
     std::vector<PageTableEntry> page_table;
     std::vector<int> frame_table;
+    std::queue<int> free_frame_list;
     u64 total_frames;
     u64 access_counter = 0;
     u64 page_faults = 0;
@@ -66,14 +68,14 @@ private:
     int clock_hand = 0;
     MemoryHierarchy* cache_ptr; 
 
-    // Scans physical frame table for an unused frame. Returns frame index or -1 if full.
+    // Retrieves next available physical frame from free frame list in O(1). Returns -1 if empty.
     int find_free_frame();
 
     // Selects a victim page based on current replacement policy and evicts it.
     int evict_page();
 
 public:
-    // Initializes MMU with physical frames, page table, and connects to cache hierarchy.
+    // Initializes MMU with physical frames, populates free frame list, and connects cache.
     VirtualMemory(MemoryHierarchy* cache, PageReplacementAlgo p = VM_LRU);
 
     // Updates the active page replacement algorithm (FIFO, LRU, CLOCK).

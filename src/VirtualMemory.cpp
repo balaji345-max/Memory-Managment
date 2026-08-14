@@ -41,12 +41,16 @@ void TLB::insert(u64 vpn, u64 pfn) {
     table[idx][victim] = {true, vpn, pfn, timer};
 }
 
-// Initializes page table, physical frame allocation tracking, and policy settings.
+// Initializes page table, physical frame tracking, and populates the free frame list.
 VirtualMemory::VirtualMemory(MemoryHierarchy* cache, PageReplacementAlgo p) 
     : policy(p), cache_ptr(cache) {
     total_frames = PHYSICAL_MEM_SIZE / PAGE_SIZE;
     page_table.resize(VIRTUAL_MEM_SIZE / PAGE_SIZE);
     frame_table.assign(total_frames, -1);
+
+    for (int i = 0; i < static_cast<int>(total_frames); ++i) {
+        free_frame_list.push(i);
+    }
 }
 
 // Sets the page replacement policy to LRU, FIFO, or CLOCK.
@@ -54,12 +58,14 @@ void VirtualMemory::set_replacement_policy(PageReplacementAlgo p) {
     policy = p;
 }
 
-// Finds the first unallocated physical frame, returning its index or -1 if all frames are occupied.
+// Retrieves the next available physical frame from the free frame list in O(1). Returns -1 if empty.
 int VirtualMemory::find_free_frame() {
-    for (int i = 0; i < static_cast<int>(total_frames); i++) {
-        if (frame_table[i] == -1) return i;
+    if (free_frame_list.empty()) {
+        return -1;
     }
-    return -1;
+    int frame = free_frame_list.front();
+    free_frame_list.pop();
+    return frame;
 }
 
 // Evicts a page using FIFO, LRU, or CLOCK policy, invalidates associated cache lines, and writes back dirty pages.
