@@ -3,11 +3,10 @@
 #include <string>
 #include <cstdint>
 #include "Cache.h"
+#include "Allocator.h"
 
 using ll = long long;
 using u64 = uint64_t;
-
-const u64 PAGE_SIZE = 64;
 const u64 VIRTUAL_MEM_SIZE = 4096;
 const u64 PHYSICAL_MEM_SIZE = 1024;
 

@@ -16,7 +16,7 @@ size_t SlabCache::total_capacity_slots() const {
     return (partial.size() + full.size() + empty.size()) * sps;
 }
 
-SlabAllocator::SlabAllocator() : total_size(0), next_slab_address(0), next_id(1) {}
+SlabAllocator::SlabAllocator() : total_size(0), total_pages(0), next_slab_address(0), next_id(1) {}
 
 SlabAllocator::~SlabAllocator() = default;
 
@@ -35,6 +35,7 @@ void SlabAllocator::init(size_t mem_size) {
     }
 
     total_size = mem_size;
+    total_pages = mem_size / PAGE_SIZE;
     next_slab_address = 0;
     next_id = 1;
 
@@ -43,13 +44,14 @@ void SlabAllocator::init(size_t mem_size) {
         caches[i].slab_size = SLAB_SIZE;
     }
 
-    std::cout << "[System] Slab Allocator Initialized: " << mem_size << " bytes.\n";
+    std::cout << "[System] Page-Backed Slab Allocator Initialized: " << mem_size << " bytes ("
+              << total_pages << " pages).\n";
     std::cout << "         Caches: ";
     for (size_t i = 0; i < NUM_CACHES; i++) {
         std::cout << CACHE_SIZES[i];
         if (i < NUM_CACHES - 1) std::cout << ", ";
     }
-    std::cout << " bytes  |  Slab size: " << SLAB_SIZE << " bytes\n";
+    std::cout << " bytes  |  Slab size: " << SLAB_SIZE << " bytes (" << PAGES_PER_SLAB << " pages)\n";
 }
 
 // Finds the index of the first cache capable of holding an object of given size.
@@ -60,13 +62,13 @@ int SlabAllocator::find_cache_index(size_t size) {
     return -1;
 }
 
-// Allocates a new contiguous slab from the system pool for the designated cache.
+// Allocates a new contiguous 16-page slab from the system pool for the designated cache.
 Slab* SlabAllocator::create_slab(size_t cache_idx) {
     if (next_slab_address + SLAB_SIZE > total_size) {
         return nullptr;
     }
 
-    Slab* new_slab = new Slab(next_slab_address, CACHE_SIZES[cache_idx], SLAB_SIZE);
+    Slab* new_slab = new Slab(next_slab_address, CACHE_SIZES[cache_idx]);
     next_slab_address += SLAB_SIZE;
     return new_slab;
 }
@@ -107,7 +109,7 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     } else {
         target_slab = create_slab(cache_idx);
         if (!target_slab) {
-            std::cout << "[Slab] Error: Out of memory, cannot create new slab.\n";
+            std::cout << "[Slab] Error: Out of memory, cannot allocate new page slab.\n";
             return -1;
         }
         slot = target_slab->alloc_slot();
@@ -169,15 +171,16 @@ size_t SlabAllocator::get_address(int block_id) {
     return it->second.address;
 }
 
-// Visualizes each slab's address, slot occupancy, and bitmap.
+// Visualizes each slab's page range, address, slot occupancy, and bitmap.
 void SlabAllocator::display() {
-    std::cout << "=== Slab Allocator Memory Layout ===\n";
+    std::cout << "=== Page-Backed Slab Allocator Memory Layout ===\n";
     for (size_t i = 0; i < NUM_CACHES; i++) {
         SlabCache& cache = caches[i];
         size_t total = cache.total_slabs();
         if (total == 0) continue;
 
-        std::cout << "\n--- Cache [" << cache.object_size << " bytes] ---\n";
+        std::cout << "\n--- Cache [" << cache.object_size << " bytes] ("
+                  << cache.total_pages() << " pages total) ---\n";
         std::cout << "  Slabs: " << total
                   << " (partial=" << cache.partial.size()
                   << ", full=" << cache.full.size()
@@ -185,8 +188,9 @@ void SlabAllocator::display() {
 
         auto print_slab_list = [](const std::list<Slab*>& lst, const std::string& label) {
             for (auto* s : lst) {
-                std::cout << "  [" << label << "] Addr=0x"
-                          << std::hex << std::uppercase << std::setfill('0') << std::setw(4)
+                size_t end_p = s->start_page + s->num_pages - 1;
+                std::cout << "  [" << label << "] Pages [" << s->start_page << ".." << end_p
+                          << "] Addr=0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(4)
                           << s->base_address << std::dec
                           << "  Slots: " << s->num_used << "/" << s->num_slots << "  Bitmap: |";
                 for (size_t j = 0; j < s->num_slots; j++) {
@@ -200,14 +204,17 @@ void SlabAllocator::display() {
         print_slab_list(cache.full,    "FULL   ");
         print_slab_list(cache.empty,   "EMPTY  ");
     }
-    std::cout << "====================================\n";
+    std::cout << "=================================================\n";
 }
 
-// Prints slab pool utilization and per-cache allocation/fragmentation metrics.
+// Prints slab pool utilization, page consumption, and per-cache metrics.
 void SlabAllocator::get_statistics() {
-    std::cout << "\n=== Slab Allocator Statistics ===\n";
-    std::cout << "Total Memory Pool : " << total_size << " bytes\n";
-    std::cout << "Slab Space Used   : " << next_slab_address << " bytes ("
+    size_t used_pages = next_slab_address / PAGE_SIZE;
+
+    std::cout << "\n=== Page-Backed Slab Allocator Statistics ===\n";
+    std::cout << "Total Memory Pool : " << total_size << " bytes (" << total_pages << " pages)\n";
+    std::cout << "Slab Pages Used   : " << used_pages << "/" << total_pages << " pages ("
+              << next_slab_address << " bytes, "
               << (total_size > 0 ? (double)next_slab_address / total_size * 100.0 : 0.0) << "%)\n";
     std::cout << "Active Allocations: " << id_map.size() << "\n\n";
 
@@ -215,13 +222,14 @@ void SlabAllocator::get_statistics() {
 
     std::cout << std::left
               << std::setw(10) << "Cache"
+              << std::setw(8)  << "Pages"
               << std::setw(8)  << "Slabs"
               << std::setw(12) << "Used/Total"
-              << std::setw(12) << "Allocs"
-              << std::setw(10) << "Frees"
+              << std::setw(10) << "Allocs"
+              << std::setw(8)  << "Frees"
               << std::setw(14) << "Int. Frag"
               << "\n";
-    std::cout << std::string(66, '-') << "\n";
+    std::cout << std::string(70, '-') << "\n";
 
     for (size_t i = 0; i < NUM_CACHES; i++) {
         SlabCache& cache = caches[i];
@@ -235,10 +243,11 @@ void SlabAllocator::get_statistics() {
 
         std::cout << std::left
                   << std::setw(10) << (std::to_string(cache.object_size) + "B")
+                  << std::setw(8)  << cache.total_pages()
                   << std::setw(8)  << total
                   << std::setw(12) << (std::to_string(used) + "/" + std::to_string(cap))
-                  << std::setw(12) << cache.total_allocations
-                  << std::setw(10) << cache.total_frees
+                  << std::setw(10) << cache.total_allocations
+                  << std::setw(8)  << cache.total_frees
                   << std::setw(14) << (used_bytes > 0 ? std::to_string(used_bytes) + "B" : "-")
                   << "\n";
     }
@@ -246,8 +255,8 @@ void SlabAllocator::get_statistics() {
     size_t slab_waste = next_slab_address - total_used_mem;
     double util = next_slab_address > 0 ? (double)total_used_mem / next_slab_address * 100.0 : 0.0;
 
-    std::cout << std::string(66, '-') << "\n";
+    std::cout << std::string(70, '-') << "\n";
     std::cout << "Slab Space Utilization: " << std::fixed << std::setprecision(1) << util << "%\n";
-    std::cout << "Slab Internal Waste   : " << slab_waste << " bytes (unused slots in allocated slabs)\n";
-    std::cout << "=================================\n";
+    std::cout << "Slab Internal Waste   : " << slab_waste << " bytes (unused slots across allocated slab pages)\n";
+    std::cout << "=============================================\n";
 }

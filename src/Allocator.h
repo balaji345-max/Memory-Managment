@@ -3,6 +3,10 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <cstdint>
+
+// Standard physical & virtual page size across the simulator (64 bytes).
+constexpr size_t PAGE_SIZE = 64;
 
 enum Alloc_Algo { Firstfit, Bestfit, Worstfit };
 

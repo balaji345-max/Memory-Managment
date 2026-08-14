@@ -10,9 +10,9 @@
    - dump memory | exit
 ====================================================
 > [System] Linear Memory Initialized: 4096 bytes.
-[System] Buddy Memory Initialized: 4096 bytes (Order 12).
-[System] Slab Allocator Initialized: 4096 bytes.
-         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes
+[System] Page-Level Buddy Memory Initialized: 4096 bytes (64 pages, Order 6).
+[System] Page-Backed Slab Allocator Initialized: 4096 bytes (64 pages).
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes (16 pages)
 Physical memory initialized to 4096 bytes.
 > Allocator set to Slab Allocator.
 > Cache replacement policy set to LRU for all levels.
@@ -21,44 +21,44 @@ Physical memory initialized to 4096 bytes.
 > Allocated block id=2 at address=0x0400
 > Allocated block id=3 at address=0x0800
 > Allocated block id=4 at address=0x0c00
-> [Slab] Error: Out of memory, cannot create new slab.
+> [Slab] Error: Out of memory, cannot allocate new page slab.
 Allocation failed.
-> [Slab] Error: Out of memory, cannot create new slab.
+> [Slab] Error: Out of memory, cannot allocate new page slab.
 Allocation failed.
-> > === Slab Allocator Memory Layout ===
+> > === Page-Backed Slab Allocator Memory Layout ===
 
---- Cache [16 bytes] ---
+--- Cache [16 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
+  [PARTIAL] Pages [0..15] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
 
---- Cache [32 bytes] ---
+--- Cache [32 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
+  [PARTIAL] Pages [16..31] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
 
---- Cache [64 bytes] ---
+--- Cache [64 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0800  Slots: 1/16  Bitmap: |#...............|
+  [PARTIAL] Pages [32..47] Addr=0x0800  Slots: 1/16  Bitmap: |#...............|
 
---- Cache [128 bytes] ---
+--- Cache [128 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
-====================================
+  [PARTIAL] Pages [48..63] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
+=================================================
 > 
-=== Slab Allocator Statistics ===
-Total Memory Pool : 4096 bytes
-Slab Space Used   : 4096 bytes (100%)
+=== Page-Backed Slab Allocator Statistics ===
+Total Memory Pool : 4096 bytes (64 pages)
+Slab Pages Used   : 64/64 pages (4096 bytes, 100%)
 Active Allocations: 4
 
-Cache00000Slabs000Used/Total00Allocs000000Frees00000Int. Frag00000
-------------------------------------------------------------------
-16B0000000100000001/6400000000100000000000000000000016B00000000000
-32B0000000100000001/3200000000100000000000000000000032B00000000000
-64B0000000100000001/1600000000100000000000000000000064B00000000000
-128B000000100000001/80000000001000000000000000000000128B0000000000
-------------------------------------------------------------------
+Cache00000Pages000Slabs000Used/Total00Allocs0000Frees000Int. Frag00000
+----------------------------------------------------------------------
+16B000000016000000100000001/640000000010000000000000000016B00000000000
+32B000000016000000100000001/320000000010000000000000000032B00000000000
+64B000000016000000100000001/160000000010000000000000000064B00000000000
+128B00000016000000100000001/8000000000100000000000000000128B0000000000
+----------------------------------------------------------------------
 Slab Space Utilization: 5.9%
-Slab Internal Waste   : 3856 bytes (unused slots in allocated slabs)
-=================================
+Slab Internal Waste   : 3856 bytes (unused slots across allocated slab pages)
+=============================================
 
 --- Cache Hierarchy Statistics ---
 L1 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%
@@ -70,62 +70,62 @@ VM: Hits=0, Faults=0, Disk=0
 > Block 3 freed.
 > [Slab] Error: Block id=5 not found.
 Block 5 freed.
-> > === Slab Allocator Memory Layout ===
+> > === Page-Backed Slab Allocator Memory Layout ===
 
---- Cache [16 bytes] ---
+--- Cache [16 bytes] (16 pages total) ---
   Slabs: 1 (partial=0, full=0, empty=1)
-  [EMPTY  ] Addr=0x0000  Slots: 0/64  Bitmap: |................................................................|
+  [EMPTY  ] Pages [0..15] Addr=0x0000  Slots: 0/64  Bitmap: |................................................................|
 
---- Cache [32 bytes] ---
+--- Cache [32 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
+  [PARTIAL] Pages [16..31] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
 
---- Cache [64 bytes] ---
+--- Cache [64 bytes] (16 pages total) ---
   Slabs: 1 (partial=0, full=0, empty=1)
-  [EMPTY  ] Addr=0x0800  Slots: 0/16  Bitmap: |................|
+  [EMPTY  ] Pages [32..47] Addr=0x0800  Slots: 0/16  Bitmap: |................|
 
---- Cache [128 bytes] ---
+--- Cache [128 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
-====================================
+  [PARTIAL] Pages [48..63] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
+=================================================
 > > Allocated block id=5 at address=0x0000
 > Allocated block id=6 at address=0x0800
-> [Slab] Error: Out of memory, cannot create new slab.
+> [Slab] Error: Out of memory, cannot allocate new page slab.
 Allocation failed.
-> > === Slab Allocator Memory Layout ===
+> > === Page-Backed Slab Allocator Memory Layout ===
 
---- Cache [16 bytes] ---
+--- Cache [16 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
+  [PARTIAL] Pages [0..15] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
 
---- Cache [32 bytes] ---
+--- Cache [32 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
+  [PARTIAL] Pages [16..31] Addr=0x0400  Slots: 1/32  Bitmap: |#...............................|
 
---- Cache [64 bytes] ---
+--- Cache [64 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0800  Slots: 1/16  Bitmap: |#...............|
+  [PARTIAL] Pages [32..47] Addr=0x0800  Slots: 1/16  Bitmap: |#...............|
 
---- Cache [128 bytes] ---
+--- Cache [128 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
-====================================
+  [PARTIAL] Pages [48..63] Addr=0x0C00  Slots: 1/8  Bitmap: |#.......|
+=================================================
 > 
-=== Slab Allocator Statistics ===
-Total Memory Pool : 4096 bytes
-Slab Space Used   : 4096 bytes (100.00%)
+=== Page-Backed Slab Allocator Statistics ===
+Total Memory Pool : 4096 bytes (64 pages)
+Slab Pages Used   : 64/64 pages (4096 bytes, 100.00%)
 Active Allocations: 4
 
-Cache00000Slabs000Used/Total00Allocs000000Frees00000Int. Frag00000
-------------------------------------------------------------------
-16B0000000100000001/6400000000200000000000100000000016B00000000000
-32B0000000100000001/3200000000100000000000000000000032B00000000000
-64B0000000100000001/1600000000200000000000100000000064B00000000000
-128B000000100000001/80000000001000000000000000000000128B0000000000
-------------------------------------------------------------------
+Cache00000Pages000Slabs000Used/Total00Allocs0000Frees000Int. Frag00000
+----------------------------------------------------------------------
+16B000000016000000100000001/640000000020000000001000000016B00000000000
+32B000000016000000100000001/320000000010000000000000000032B00000000000
+64B000000016000000100000001/160000000020000000001000000064B00000000000
+128B00000016000000100000001/8000000000100000000000000000128B0000000000
+----------------------------------------------------------------------
 Slab Space Utilization: 5.9%
-Slab Internal Waste   : 3856 bytes (unused slots in allocated slabs)
-=================================
+Slab Internal Waste   : 3856 bytes (unused slots across allocated slab pages)
+=============================================
 
 --- Cache Hierarchy Statistics ---
 L1 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%
@@ -142,40 +142,40 @@ Block 7 freed.
 Block 8 freed.
 > [Slab] Error: Block id=9 not found.
 Block 9 freed.
-> > === Slab Allocator Memory Layout ===
+> > === Page-Backed Slab Allocator Memory Layout ===
 
---- Cache [16 bytes] ---
+--- Cache [16 bytes] (16 pages total) ---
   Slabs: 1 (partial=1, full=0, empty=0)
-  [PARTIAL] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
+  [PARTIAL] Pages [0..15] Addr=0x0000  Slots: 1/64  Bitmap: |#...............................................................|
 
---- Cache [32 bytes] ---
+--- Cache [32 bytes] (16 pages total) ---
   Slabs: 1 (partial=0, full=0, empty=1)
-  [EMPTY  ] Addr=0x0400  Slots: 0/32  Bitmap: |................................|
+  [EMPTY  ] Pages [16..31] Addr=0x0400  Slots: 0/32  Bitmap: |................................|
 
---- Cache [64 bytes] ---
+--- Cache [64 bytes] (16 pages total) ---
   Slabs: 1 (partial=0, full=0, empty=1)
-  [EMPTY  ] Addr=0x0800  Slots: 0/16  Bitmap: |................|
+  [EMPTY  ] Pages [32..47] Addr=0x0800  Slots: 0/16  Bitmap: |................|
 
---- Cache [128 bytes] ---
+--- Cache [128 bytes] (16 pages total) ---
   Slabs: 1 (partial=0, full=0, empty=1)
-  [EMPTY  ] Addr=0x0C00  Slots: 0/8  Bitmap: |........|
-====================================
+  [EMPTY  ] Pages [48..63] Addr=0x0C00  Slots: 0/8  Bitmap: |........|
+=================================================
 > 
-=== Slab Allocator Statistics ===
-Total Memory Pool : 4096 bytes
-Slab Space Used   : 4096 bytes (100.00%)
+=== Page-Backed Slab Allocator Statistics ===
+Total Memory Pool : 4096 bytes (64 pages)
+Slab Pages Used   : 64/64 pages (4096 bytes, 100.00%)
 Active Allocations: 1
 
-Cache00000Slabs000Used/Total00Allocs000000Frees00000Int. Frag00000
-------------------------------------------------------------------
-16B0000000100000001/6400000000200000000000100000000016B00000000000
-32B0000000100000000/32000000001000000000001000000000-0000000000000
-64B0000000100000000/16000000002000000000002000000000-0000000000000
-128B000000100000000/80000000001000000000001000000000-0000000000000
-------------------------------------------------------------------
+Cache00000Pages000Slabs000Used/Total00Allocs0000Frees000Int. Frag00000
+----------------------------------------------------------------------
+16B000000016000000100000001/640000000020000000001000000016B00000000000
+32B000000016000000100000000/3200000000100000000010000000-0000000000000
+64B000000016000000100000000/1600000000200000000020000000-0000000000000
+128B00000016000000100000000/8000000000100000000010000000-0000000000000
+----------------------------------------------------------------------
 Slab Space Utilization: 0.4%
-Slab Internal Waste   : 4080 bytes (unused slots in allocated slabs)
-=================================
+Slab Internal Waste   : 4080 bytes (unused slots across allocated slab pages)
+=============================================
 
 --- Cache Hierarchy Statistics ---
 L1 Stats: Hits=00000 | Misses=00000 | Hit Rate=000.00%

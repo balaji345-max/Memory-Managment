@@ -10,9 +10,9 @@
    - dump memory | exit
 ====================================================
 > [System] Linear Memory Initialized: 192 bytes.
-[System] Buddy Memory Initialized: 256 bytes (Order 8).
-[System] Slab Allocator Initialized: 192 bytes.
-         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes
+[System] Page-Level Buddy Memory Initialized: 256 bytes (4 pages, Order 2).
+[System] Page-Backed Slab Allocator Initialized: 192 bytes (3 pages).
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes (16 pages)
 Physical memory initialized to 192 bytes.
 > Allocator set to Buddy System.
 > Cache replacement policy set to FIFO for all levels.
@@ -33,11 +33,10 @@ Physical memory initialized to 192 bytes.
 [Cache] L2 Hit
 > [MMU] TLB Hit
 [Cache] L2 Hit
-> Total Memory      : 256
-Allocated Blocks  : 0
-Free Blocks       : 1
-Free Memory       : 256
-Used Memory       : 0
+> Total Memory Pool : 256 bytes (4 pages)
+Allocated Blocks  : 0 (0 pages, 0 bytes)
+Free Blocks       : 1 (4 pages, 256 bytes)
+Memory Utilization: 0.0%
 
 --- Cache Hierarchy Statistics ---
 L1 Stats: Hits=0     | Misses=8     | Hit Rate=  0.00%

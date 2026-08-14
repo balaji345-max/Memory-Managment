@@ -4,18 +4,28 @@
 #include <list>
 #include <unordered_map>
 
-// Represents a contiguous memory slab partitioned into fixed-size slots.
+// Number of 64-byte pages allocated for each individual slab (16 pages = 1024 bytes).
+constexpr size_t PAGES_PER_SLAB = 16;
+constexpr size_t SLAB_SIZE = PAGES_PER_SLAB * PAGE_SIZE;
+
+// Represents a page-backed memory slab partitioned into fixed-size object slots.
 struct Slab {
     size_t base_address;
+    size_t start_page;
+    size_t num_pages;
     size_t object_size;
     size_t num_slots;
     size_t num_used;
     std::vector<bool> bitmap;
 
-    Slab(size_t base, size_t obj_sz, size_t slab_sz)
-        : base_address(base), object_size(obj_sz),
-          num_slots(slab_sz / obj_sz), num_used(0),
-          bitmap(slab_sz / obj_sz, false) {}
+    Slab(size_t base, size_t obj_sz)
+        : base_address(base),
+          start_page(base / PAGE_SIZE),
+          num_pages(PAGES_PER_SLAB),
+          object_size(obj_sz),
+          num_slots(SLAB_SIZE / obj_sz),
+          num_used(0),
+          bitmap(SLAB_SIZE / obj_sz, false) {}
 
     // Allocates the first available slot in the slab. Returns slot index or -1 if full.
     int alloc_slot() {
@@ -61,8 +71,8 @@ struct SlabCache {
     size_t total_allocations = 0;
     size_t total_frees = 0;
 
-    SlabCache() : object_size(0), slab_size(0) {}
-    SlabCache(size_t obj_sz, size_t sl_sz) : object_size(obj_sz), slab_size(sl_sz) {}
+    SlabCache() : object_size(0), slab_size(SLAB_SIZE) {}
+    explicit SlabCache(size_t obj_sz) : object_size(obj_sz), slab_size(SLAB_SIZE) {}
 
     ~SlabCache() {
         for (auto* s : partial) delete s;
@@ -75,6 +85,9 @@ struct SlabCache {
 
     // Returns total count of allocated slabs across partial, full, and empty lists.
     size_t total_slabs() const { return partial.size() + full.size() + empty.size(); }
+
+    // Returns total pages consumed by slabs in this cache.
+    size_t total_pages() const { return total_slabs() * PAGES_PER_SLAB; }
 
     // Returns number of currently used slots across all slabs in this cache.
     size_t total_used_slots() const;
@@ -91,15 +104,15 @@ struct SlabAllocRecord {
     size_t address;
 };
 
-// Kernel-style Slab Allocator.
-// Provides dedicated caches for power-of-two object sizes (8B to 512B) to eliminate internal fragmentation.
+// Page-Backed Kernel-Style Slab Allocator.
+// Allocates full page blocks from physical memory and subdivides them into dedicated object caches (8B to 512B).
 class SlabAllocator : public Allocator {
 private:
     static constexpr size_t NUM_CACHES = 7;
     static constexpr size_t CACHE_SIZES[NUM_CACHES] = {8, 16, 32, 64, 128, 256, 512};
-    static constexpr size_t SLAB_SIZE = 1024;
 
     size_t total_size;
+    size_t total_pages;
     size_t next_slab_address;
     int next_id;
 
@@ -109,7 +122,7 @@ private:
     // Finds the index of the smallest cache size that fits the requested size.
     int find_cache_index(size_t size);
 
-    // Carves out a new slab from the memory pool for the given cache.
+    // Carves out a new page-backed slab from the memory pool for the given cache.
     Slab* create_slab(size_t cache_idx);
 
 public:
@@ -119,7 +132,7 @@ public:
     // Resets slab caches and prepares memory pool.
     void init(size_t mem_size) override;
 
-    // Allocates from partial slab -> empty slab -> new slab.
+    // Allocates from partial slab -> empty slab -> new page-backed slab.
     int allocate(size_t mem_size, Alloc_Algo algo = Firstfit) override;
 
     // Returns slot to its slab and updates cache list placement.
@@ -128,9 +141,9 @@ public:
     // Returns virtual address of the allocated slot.
     size_t get_address(int block_id) override;
 
-    // Displays per-cache slab lists and occupancy bitmaps.
+    // Displays per-cache page ranges, slab lists, and occupancy bitmaps.
     void display() override;
 
-    // Outputs slab memory utilization, allocation counts, and waste statistics.
+    // Outputs page consumption, slot utilization, and internal fragmentation metrics.
     void get_statistics() override;
 };

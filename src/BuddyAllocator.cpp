@@ -1,5 +1,6 @@
 #include "BuddyAllocator.h"
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <climits>
 
@@ -20,39 +21,41 @@ BuddyAllocator::~BuddyAllocator() {
     free_lists.clear();
 }
 
-// Calculates power-of-two order (log2) for a given value x. Returns -1 if not a power of 2.
-int BuddyAllocator::order_of(size_t x) {
-    if (x == 0 || (x & (x - 1)) != 0) return -1;
+// Calculates power-of-two page order (Order 0 = PAGE_SIZE = 64B, Order 1 = 128B = 2 pages, etc.).
+int BuddyAllocator::order_of(size_t bytes) {
+    if (bytes < PAGE_SIZE) return -1;
+    size_t pages = bytes / PAGE_SIZE;
+    if ((pages & (pages - 1)) != 0) return -1;
 
     int order = 0;
-    while (x > 1) {
-        x >>= 1;
+    while (pages > 1) {
+        pages >>= 1;
         order++;
     }
     return order;
 }
 
-// Computes the nearest power of 2 greater than or equal to x.
-size_t BuddyAllocator::next_power_of_2(size_t x) {
-    if (x == 0) return 1;
+// Rounds requested size up to the nearest power-of-2 pages in bytes (minimum 1 Page = 64B).
+size_t BuddyAllocator::round_to_buddy_size(size_t bytes) {
+    if (bytes == 0) return PAGE_SIZE;
+    size_t pages = (bytes + PAGE_SIZE - 1) / PAGE_SIZE;
 
-    constexpr size_t MAX_POW2 = size_t(1) << (sizeof(size_t) * 8 - 1);
-    if (x > MAX_POW2) return 0;
+    // Round pages up to next power of 2
+    if ((pages & (pages - 1)) == 0) return pages * PAGE_SIZE;
 
-    if ((x & (x - 1)) == 0) return x;
+    pages--;
+    pages |= pages >> 1;
+    pages |= pages >> 2;
+    pages |= pages >> 4;
+    pages |= pages >> 8;
+    pages |= pages >> 16;
+    pages |= pages >> 32;
+    pages++;
 
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    x |= x >> 32;
-
-    return x + 1;
+    return pages * PAGE_SIZE;
 }
 
-// Initializes the buddy memory pool to the next power of 2 size.
+// Initializes the buddy memory pool to a power-of-2 page size.
 void BuddyAllocator::init(size_t size) {
     for (auto& entry : allocated) {
         delete entry.second;
@@ -67,11 +70,8 @@ void BuddyAllocator::init(size_t size) {
         }
     }
 
-    total_size = next_power_of_2(size);
-    if (total_size == 0) {
-        std::cerr << "[Error] Requested size too large.\n";
-        return;
-    }
+    total_size = round_to_buddy_size(size);
+    total_pages = total_size / PAGE_SIZE;
 
     int max_order = order_of(total_size);
     free_lists.assign(max_order + 1, nullptr);
@@ -79,16 +79,16 @@ void BuddyAllocator::init(size_t size) {
 
     free_lists[max_order] = new BuddyBlock(0, total_size);
 
-    std::cout << "[System] Buddy Memory Initialized: "
-              << total_size << " bytes (Order " << max_order << ").\n";
+    std::cout << "[System] Page-Level Buddy Memory Initialized: "
+              << total_size << " bytes (" << total_pages << " pages, Order " << max_order << ").\n";
 }
 
-// Allocates a block by rounding up to power-of-two and splitting larger blocks as needed.
+// Allocates memory in units of 2^k pages by splitting larger buddy blocks down to requested order.
 int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
     if (size == 0) return -1;
 
-    size_t req_size = next_power_of_2(size);
-    if (req_size == 0 || req_size > total_size) return -1;
+    size_t req_size = round_to_buddy_size(size);
+    if (req_size > total_size) return -1;
 
     int req_order = order_of(req_size);
     if (req_order == -1) return -1;
@@ -105,12 +105,14 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
     free_lists[current_order] = blk->next;
     blk->next = nullptr;
 
+    // Split down to the required page order
     while (current_order > req_order) {
         current_order--;
         size_t half = blk->size / 2;
 
         BuddyBlock* buddy = new BuddyBlock(blk->address + half, half);
         blk->size = half;
+        blk->page_count = half / PAGE_SIZE;
 
         buddy->next = free_lists[current_order];
         free_lists[current_order] = buddy;
@@ -121,7 +123,7 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
     return blk->id;
 }
 
-// Frees the block and iteratively merges with adjacent free buddy blocks.
+// Frees the allocated page block and recursively merges with its buddy page block.
 void BuddyAllocator::deallocate(int id) {
     auto it = allocated.find(id);
     if (it == allocated.end()) return;
@@ -165,31 +167,37 @@ void BuddyAllocator::deallocate(int id) {
     }
 }
 
-// Returns the start address of the allocated block id, or SIZE_MAX if not found.
+// Returns start address of allocated buddy page block.
 size_t BuddyAllocator::get_address(int id) {
     auto it = allocated.find(id);
     if (it == allocated.end()) return SIZE_MAX;
     return it->second->address;
 }
 
-// Displays all non-empty free lists by order.
+// Displays free lists across all page order levels.
 void BuddyAllocator::display() {
-    std::cout << "--- Free Lists ---\n";
+    std::cout << "--- Page-Level Buddy Free Lists ---\n";
     for (size_t i = 0; i < free_lists.size(); i++) {
-        std::cout << "Order " << i << " (" << (1ULL << i) << "): ";
+        size_t pages = (1ULL << i);
+        size_t bytes = pages * PAGE_SIZE;
+        std::cout << "Order " << i << " (" << pages << " Page" << (pages > 1 ? "s" : "")
+                  << " = " << bytes << "B): ";
         BuddyBlock* curr = free_lists[i];
         while (curr) {
-            std::cout << "[Addr:" << curr->address
-                      << ", Size:" << curr->size << "] -> ";
+            std::cout << "[Addr:0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(4)
+                      << curr->address << std::dec
+                      << ", Pages:" << curr->page_count
+                      << ", Size:" << curr->size << "B] -> ";
             curr = curr->next;
         }
         std::cout << "nullptr\n";
     }
 }
 
-// Prints total memory, allocated blocks, and free memory breakdown.
+// Prints page-level memory metrics, allocated pages, and free memory breakdown.
 void BuddyAllocator::get_statistics() {
-    size_t free_mem = 0, free_blocks = 0;
+    size_t free_mem = 0;
+    size_t free_blocks = 0;
 
     for (auto head : free_lists) {
         while (head) {
@@ -199,9 +207,13 @@ void BuddyAllocator::get_statistics() {
         }
     }
 
-    std::cout << "Total Memory      : " << total_size << "\n";
-    std::cout << "Allocated Blocks  : " << allocated.size() << "\n";
-    std::cout << "Free Blocks       : " << free_blocks << "\n";
-    std::cout << "Free Memory       : " << free_mem << "\n";
-    std::cout << "Used Memory       : " << (total_size - free_mem) << "\n";
+    size_t used_mem = total_size - free_mem;
+    size_t used_pages = used_mem / PAGE_SIZE;
+    size_t free_pages = free_mem / PAGE_SIZE;
+
+    std::cout << "Total Memory Pool : " << total_size << " bytes (" << total_pages << " pages)\n";
+    std::cout << "Allocated Blocks  : " << allocated.size() << " (" << used_pages << " pages, " << used_mem << " bytes)\n";
+    std::cout << "Free Blocks       : " << free_blocks << " (" << free_pages << " pages, " << free_mem << " bytes)\n";
+    std::cout << "Memory Utilization: " << std::fixed << std::setprecision(1)
+              << (total_size > 0 ? (double)used_mem / total_size * 100.0 : 0.0) << "%\n";
 }

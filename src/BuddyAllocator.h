@@ -6,50 +6,54 @@
 #include <cmath>
 #include "Allocator.h"
 
-// Represents a node in the buddy system free lists.
+// Represents a node in the page-level buddy system free lists.
 struct BuddyBlock {
     size_t address;
-    size_t size;
+    size_t size;        // Size in bytes
+    size_t page_count;  // Size in 64-byte pages
     int id;
     BuddyBlock* next;
-    BuddyBlock(size_t addr, size_t s) : address(addr), size(s), id(0), next(nullptr) {}
+
+    BuddyBlock(size_t addr, size_t s)
+        : address(addr), size(s), page_count(s / PAGE_SIZE), id(0), next(nullptr) {}
 };
 
-// Binary Buddy Memory Allocator.
-// Allocations are rounded up to powers of 2.
-// Manages power-of-2 free lists by order and recursively splits/merges buddy blocks.
+// Page-Level Binary Buddy Allocator (modeling Linux kernel alloc_pages).
+// Orders represent powers of 2 in physical/virtual page units (Order 0 = 1 Page = 64B, Order 1 = 2 Pages, etc.).
+// Recursively splits and merges buddy page blocks.
 class BuddyAllocator : public Allocator {
 private:
     size_t total_size{};
+    size_t total_pages{};
     int next_id{1};
     std::vector<BuddyBlock*> free_lists;
     std::unordered_map<int, BuddyBlock*> allocated;
     
-    // Computes the smallest power of 2 greater than or equal to x.
-    size_t next_power_of_2(size_t x);
+    // Calculates power-of-2 page order for a given byte size (Order 0 = 64B = 1 Page).
+    int order_of(size_t bytes);
 
-    // Returns log2(x) if x is a power of 2, or -1 otherwise.
-    int order_of(size_t x);
+    // Rounds requested size to nearest power-of-2 page count in bytes.
+    size_t round_to_buddy_size(size_t bytes);
 
 public:
     BuddyAllocator() = default;
     ~BuddyAllocator() override;
 
-    // Resets buddy state and initializes memory pool rounded up to power of 2.
+    // Resets buddy state and initializes memory pool rounded up to power-of-2 pages.
     void init(size_t size) override;
 
-    // Allocates memory rounded to power-of-2 size by finding/splitting order blocks.
+    // Allocates memory in units of 2^k pages by finding/splitting order blocks.
     int allocate(size_t size, Alloc_Algo algo = Firstfit) override;
 
-    // Frees block by id and recursively merges with its buddy block if also free.
+    // Frees block by id and recursively merges with its buddy page block if also free.
     void deallocate(int id) override;
 
     // Returns start address of allocated block.
     size_t get_address(int Id) override;
 
-    // Prints free list chains across all order levels.
+    // Prints free list chains across all page order levels.
     void display() override;
 
-    // Prints buddy memory usage and free block statistics.
+    // Prints page-level memory metrics, allocated pages, and free memory breakdown.
     void get_statistics() override;
 };
