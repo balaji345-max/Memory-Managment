@@ -11,6 +11,7 @@
 #include "src/Cache.h"
 #include "src/VirtualMemory.h"
 
+// Splits a whitespace-delimited CLI command string into separate tokens.
 std::vector<std::string> tokenize(const std::string& command) {
     std::stringstream ss(command);
     std::string temp;
@@ -19,6 +20,7 @@ std::vector<std::string> tokenize(const std::string& command) {
     return tokens;
 }
 
+// Entry point for interactive CLI simulator managing allocators, cache hierarchy, and MMU.
 int main() {
     MemoryAllocator linear_alloc;
     BuddyAllocator buddy_alloc;
@@ -31,7 +33,7 @@ int main() {
     CacheLevel l3(3, 512, 32, 4, LRU);  
     MemoryHierarchy cache_system(&l1, &l2, &l3);
 
-   VirtualMemory mmu(&cache_system, VM_LRU);
+    VirtualMemory mmu(&cache_system, VM_LRU);
     TLB tlb(16, 4); 
 
     std::string line;
@@ -59,9 +61,11 @@ int main() {
         if (tokens.empty()) continue;
         std::string cmd = tokens[0];
 
-        if (cmd == "exit") break;
+        if (cmd == "exit") {
+            break;
+        }
 
-        else if (cmd == "init" && tokens.size() >= 3 && tokens[1] == "memory") {
+        if (cmd == "init" && tokens.size() >= 3 && tokens[1] == "memory") {
             try {
                 system_memory_size = std::stoul(tokens[2]);
                 linear_alloc.init(system_memory_size);
@@ -160,7 +164,7 @@ int main() {
             
             std::cout << "[MMU] " << translation_report << "\n";
             if (p_addr != -1) {
-                std::cout << "[Cache] " << cache_system.request((size_t)p_addr, (cmd == "write")) << "\n";
+                std::cout << "[Cache] " << cache_system.request(static_cast<size_t>(p_addr), (cmd == "write")) << "\n";
             }
         }
 

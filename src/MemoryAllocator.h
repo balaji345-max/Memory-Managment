@@ -1,11 +1,12 @@
 #pragma once
 #include "Allocator.h"
 
+// Represents a single block in the doubly-linked free list.
 struct Mem_Block {
     int Id;
     size_t start_address;
-    size_t mem_size;      
-    size_t req_size;      
+    size_t mem_size;
+    size_t req_size;
     bool is_free;
     Mem_Block* next;
     Mem_Block* prev;
@@ -14,6 +15,9 @@ struct Mem_Block {
         : Id(id), start_address(addr), mem_size(sz), req_size(req), is_free(free), next(nullptr), prev(nullptr) {}
 };
 
+// Linear (contiguous) memory allocator using a doubly-linked list of blocks.
+// Supports First-Fit, Best-Fit, and Worst-Fit allocation strategies.
+// Performs coalescing of adjacent free blocks on deallocation.
 class MemoryAllocator : public Allocator {
 private:
     size_t total_size;

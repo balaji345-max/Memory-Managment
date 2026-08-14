@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <climits>
 
+// Releases all allocated blocks and free list nodes.
 BuddyAllocator::~BuddyAllocator() {
     for (auto& entry : allocated) {
         delete entry.second;
@@ -19,6 +20,7 @@ BuddyAllocator::~BuddyAllocator() {
     free_lists.clear();
 }
 
+// Calculates power-of-two order (log2) for a given value x. Returns -1 if not a power of 2.
 int BuddyAllocator::order_of(size_t x) {
     if (x == 0 || (x & (x - 1)) != 0) return -1;
 
@@ -30,6 +32,7 @@ int BuddyAllocator::order_of(size_t x) {
     return order;
 }
 
+// Computes the nearest power of 2 greater than or equal to x.
 size_t BuddyAllocator::next_power_of_2(size_t x) {
     if (x == 0) return 1;
 
@@ -49,6 +52,7 @@ size_t BuddyAllocator::next_power_of_2(size_t x) {
     return x + 1;
 }
 
+// Initializes the buddy memory pool to the next power of 2 size.
 void BuddyAllocator::init(size_t size) {
     for (auto& entry : allocated) {
         delete entry.second;
@@ -79,6 +83,7 @@ void BuddyAllocator::init(size_t size) {
               << total_size << " bytes (Order " << max_order << ").\n";
 }
 
+// Allocates a block by rounding up to power-of-two and splitting larger blocks as needed.
 int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
     if (size == 0) return -1;
 
@@ -116,6 +121,7 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
     return blk->id;
 }
 
+// Frees the block and iteratively merges with adjacent free buddy blocks.
 void BuddyAllocator::deallocate(int id) {
     auto it = allocated.find(id);
     if (it == allocated.end()) return;
@@ -159,12 +165,14 @@ void BuddyAllocator::deallocate(int id) {
     }
 }
 
+// Returns the start address of the allocated block id, or SIZE_MAX if not found.
 size_t BuddyAllocator::get_address(int id) {
     auto it = allocated.find(id);
     if (it == allocated.end()) return SIZE_MAX;
     return it->second->address;
 }
 
+// Displays all non-empty free lists by order.
 void BuddyAllocator::display() {
     std::cout << "--- Free Lists ---\n";
     for (size_t i = 0; i < free_lists.size(); i++) {
@@ -179,6 +187,7 @@ void BuddyAllocator::display() {
     }
 }
 
+// Prints total memory, allocated blocks, and free memory breakdown.
 void BuddyAllocator::get_statistics() {
     size_t free_mem = 0, free_blocks = 0;
 

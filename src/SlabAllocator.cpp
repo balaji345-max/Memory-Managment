@@ -2,36 +2,28 @@
 #include <iostream>
 #include <iomanip>
 
-// ---------- SlabCache helper methods ----------
-
+// Calculates total occupied slots across all slabs in the cache.
 size_t SlabCache::total_used_slots() const {
     size_t used = 0;
     for (auto* s : partial) used += s->num_used;
     for (auto* s : full)    used += s->num_used;
-    // empty slabs have 0 used
     return used;
 }
 
+// Calculates total slot capacity across all slabs in the cache.
 size_t SlabCache::total_capacity_slots() const {
-    size_t cap = 0;
     size_t sps = slab_size / object_size;
-    cap = (partial.size() + full.size() + empty.size()) * sps;
-    return cap;
+    return (partial.size() + full.size() + empty.size()) * sps;
 }
-
-// ---------- SlabAllocator ----------
 
 SlabAllocator::SlabAllocator() : total_size(0), next_slab_address(0), next_id(1) {}
 
-SlabAllocator::~SlabAllocator() {
-    // SlabCache destructors handle slab deletion
-}
+SlabAllocator::~SlabAllocator() = default;
 
+// Resets slab caches, frees existing slabs, and prepares pool for new allocations.
 void SlabAllocator::init(size_t mem_size) {
-    // Clean up old state
     id_map.clear();
     for (size_t i = 0; i < NUM_CACHES; i++) {
-        // Manually clean each cache's slabs
         for (auto* s : caches[i].partial) delete s;
         for (auto* s : caches[i].full)    delete s;
         for (auto* s : caches[i].empty)   delete s;
@@ -46,7 +38,6 @@ void SlabAllocator::init(size_t mem_size) {
     next_slab_address = 0;
     next_id = 1;
 
-    // Initialize each cache with its object size
     for (size_t i = 0; i < NUM_CACHES; i++) {
         caches[i].object_size = CACHE_SIZES[i];
         caches[i].slab_size = SLAB_SIZE;
@@ -61,17 +52,18 @@ void SlabAllocator::init(size_t mem_size) {
     std::cout << " bytes  |  Slab size: " << SLAB_SIZE << " bytes\n";
 }
 
+// Finds the index of the first cache capable of holding an object of given size.
 int SlabAllocator::find_cache_index(size_t size) {
     for (size_t i = 0; i < NUM_CACHES; i++) {
         if (CACHE_SIZES[i] >= size) return static_cast<int>(i);
     }
-    return -1; // Too large for any slab cache
+    return -1;
 }
 
+// Allocates a new contiguous slab from the system pool for the designated cache.
 Slab* SlabAllocator::create_slab(size_t cache_idx) {
-    // Check if we have enough space left in the simulated memory
     if (next_slab_address + SLAB_SIZE > total_size) {
-        return nullptr; // No room for another slab
+        return nullptr;
     }
 
     Slab* new_slab = new Slab(next_slab_address, CACHE_SIZES[cache_idx], SLAB_SIZE);
@@ -79,6 +71,7 @@ Slab* SlabAllocator::create_slab(size_t cache_idx) {
     return new_slab;
 }
 
+// Allocates a slot matching the requested size from partial, empty, or newly created slabs.
 int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     if (mem_size == 0) return -1;
 
@@ -93,32 +86,25 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     Slab* target_slab = nullptr;
     int slot = -1;
 
-    // 1. Try to allocate from a partial slab first
     if (!cache.partial.empty()) {
         target_slab = cache.partial.front();
         slot = target_slab->alloc_slot();
 
-        // If this slab is now full, move it to the full list
         if (target_slab->is_full()) {
             cache.partial.pop_front();
             cache.full.push_back(target_slab);
         }
-    }
-    // 2. Try an empty slab
-    else if (!cache.empty.empty()) {
+    } else if (!cache.empty.empty()) {
         target_slab = cache.empty.front();
         cache.empty.pop_front();
         slot = target_slab->alloc_slot();
 
-        // After one allocation it becomes partial (unless 1-slot slab, then full)
         if (target_slab->is_full()) {
             cache.full.push_back(target_slab);
         } else {
             cache.partial.push_back(target_slab);
         }
-    }
-    // 3. Create a brand new slab
-    else {
+    } else {
         target_slab = create_slab(cache_idx);
         if (!target_slab) {
             std::cout << "[Slab] Error: Out of memory, cannot create new slab.\n";
@@ -133,9 +119,8 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
         }
     }
 
-    if (slot == -1) return -1; // Should not happen if logic is correct
+    if (slot == -1) return -1;
 
-    // Record the allocation
     int id = next_id++;
     size_t addr = target_slab->slot_address(slot);
     id_map[id] = {static_cast<size_t>(cache_idx), target_slab, static_cast<size_t>(slot), addr};
@@ -144,6 +129,7 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     return id;
 }
 
+// Frees the allocated block, returning its slot and transitioning slab states between full/partial/empty.
 void SlabAllocator::deallocate(int block_id) {
     auto it = id_map.find(block_id);
     if (it == id_map.end()) {
@@ -160,7 +146,6 @@ void SlabAllocator::deallocate(int block_id) {
     cache.total_frees++;
 
     if (was_full) {
-        // Move from full -> partial (or empty)
         cache.full.remove(slab);
         if (slab->is_empty()) {
             cache.empty.push_back(slab);
@@ -168,29 +153,29 @@ void SlabAllocator::deallocate(int block_id) {
             cache.partial.push_back(slab);
         }
     } else {
-        // Was partial; might now be empty
         if (slab->is_empty()) {
             cache.partial.remove(slab);
             cache.empty.push_back(slab);
         }
-        // Otherwise stays in partial
     }
 
     id_map.erase(it);
 }
 
+// Returns start address of allocated slab slot.
 size_t SlabAllocator::get_address(int block_id) {
     auto it = id_map.find(block_id);
     if (it == id_map.end()) return 0;
     return it->second.address;
 }
 
+// Visualizes each slab's address, slot occupancy, and bitmap.
 void SlabAllocator::display() {
     std::cout << "=== Slab Allocator Memory Layout ===\n";
     for (size_t i = 0; i < NUM_CACHES; i++) {
         SlabCache& cache = caches[i];
         size_t total = cache.total_slabs();
-        if (total == 0) continue; // Skip caches with no slabs allocated yet
+        if (total == 0) continue;
 
         std::cout << "\n--- Cache [" << cache.object_size << " bytes] ---\n";
         std::cout << "  Slabs: " << total
@@ -198,7 +183,6 @@ void SlabAllocator::display() {
                   << ", full=" << cache.full.size()
                   << ", empty=" << cache.empty.size() << ")\n";
 
-        // Display each slab's bitmap
         auto print_slab_list = [](const std::list<Slab*>& lst, const std::string& label) {
             for (auto* s : lst) {
                 std::cout << "  [" << label << "] Addr=0x"
@@ -219,6 +203,7 @@ void SlabAllocator::display() {
     std::cout << "====================================\n";
 }
 
+// Prints slab pool utilization and per-cache allocation/fragmentation metrics.
 void SlabAllocator::get_statistics() {
     std::cout << "\n=== Slab Allocator Statistics ===\n";
     std::cout << "Total Memory Pool : " << total_size << " bytes\n";
@@ -245,12 +230,6 @@ void SlabAllocator::get_statistics() {
 
         size_t used = cache.total_used_slots();
         size_t cap = cache.total_capacity_slots();
-
-        // Internal fragmentation: for each allocation, waste = cache.object_size - actual_request_size
-        // Since we don't store the original request size per-slot, we approximate:
-        // We know allocations went to this cache, so min waste per alloc = 0, max = object_size - prev_cache_size
-        // For stats, report total wasted capacity = used_slots * object_size - actual bytes requested
-        // Since we can't track per-slot request, report the slot-level utilization
         size_t used_bytes = used * cache.object_size;
         total_used_mem += used_bytes;
 
@@ -264,7 +243,6 @@ void SlabAllocator::get_statistics() {
                   << "\n";
     }
 
-    // Overall fragmentation: slab space allocated but not used by any object
     size_t slab_waste = next_slab_address - total_used_mem;
     double util = next_slab_address > 0 ? (double)total_used_mem / next_slab_address * 100.0 : 0.0;
 

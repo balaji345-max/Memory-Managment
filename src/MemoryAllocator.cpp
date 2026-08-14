@@ -2,7 +2,10 @@
 #include <iostream>
 #include <limits>
 #include <iomanip>
+
 MemoryAllocator::MemoryAllocator() : total_size(0), head(nullptr), next_Id(1) {}
+
+// Frees all blocks in the linked list.
 MemoryAllocator::~MemoryAllocator() {
     Mem_Block* curr = head;
     while (curr) {
@@ -12,12 +15,16 @@ MemoryAllocator::~MemoryAllocator() {
     }
     head = nullptr;
 }
+
+// Returns the start address of the block with the given id, or 0 if not found.
 size_t MemoryAllocator::get_address(int id) {
     if (id_map.find(id) != id_map.end()) {
         return id_map[id]->start_address;
     }
     return 0; 
 }
+
+// Resets all state and creates a single free block spanning the entire memory pool.
 void MemoryAllocator::init(size_t mem_size) {
     if (head) {
         Mem_Block* curr = head;
@@ -35,17 +42,17 @@ void MemoryAllocator::init(size_t mem_size) {
 
     total_size = mem_size;
     next_Id = 1;
-    // Create the initial giant free block
     head = new Mem_Block(0, mem_size, 0, true, 0);
     std::cout << "[System] Linear Memory Initialized: " << mem_size << " bytes.\n";
 }
 
+// Allocates mem_size bytes using the specified strategy (First/Best/Worst Fit).
+// Splits the chosen block if it's larger than requested. Returns block ID or -1 on failure.
 int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
     if (mem_size == 0) return -1;
-    total_alloc_attempts++; // Track attempt
+    total_alloc_attempts++;
 
-   // size_t aligned_size = (mem_size + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-   size_t aligned_size=mem_size;
+    size_t aligned_size = mem_size;
     Mem_Block* best = nullptr;
     Mem_Block* curr = head;
 
@@ -75,9 +82,12 @@ int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
     best->req_size = mem_size; 
     id_map[best->Id] = best;
     
-    successful_allocations++; // Track success
+    successful_allocations++;
     return best->Id;
-}void MemoryAllocator::deallocate(int Id) {
+}
+
+// Frees the block with the given ID and coalesces with adjacent free blocks.
+void MemoryAllocator::deallocate(int Id) {
     if (id_map.find(Id) == id_map.end()) return;
 
     Mem_Block* curr = id_map[Id];
@@ -86,7 +96,6 @@ int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
     curr->req_size = 0;
     id_map.erase(Id);
 
-    // Coalesce with next block if it is free
     if (curr->next && curr->next->is_free) {
         Mem_Block* next_block = curr->next;
         curr->mem_size += next_block->mem_size;
@@ -95,7 +104,6 @@ int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
         delete next_block;
     }
 
-    // Coalesce with previous block if it is free
     if (curr->prev && curr->prev->is_free) {
         Mem_Block* prev_block = curr->prev;
         prev_block->mem_size += curr->mem_size;
@@ -105,6 +113,7 @@ int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
     }
 }
 
+// Prints each block's address range and FREE/USED status.
 void MemoryAllocator::display() {
     Mem_Block* curr = head;
     while (curr) {
@@ -116,6 +125,7 @@ void MemoryAllocator::display() {
     }
 }
 
+// Prints utilization, internal/external fragmentation, and allocation success rate.
 void MemoryAllocator::get_statistics() {
     size_t total_free = 0, used = 0, internal_frag = 0;
     size_t largest_free_block = 0; 

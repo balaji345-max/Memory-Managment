@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
+// Configures cache capacity, line size, associativity, and computes bit-shift offsets.
 CacheLevel::CacheLevel(int id, u64 s, u64 bs, int assoc, ReplacementPolicy p)
     : level_id(id), size(s), block_size(bs), associativity(assoc), policy(p) {
 
@@ -17,8 +18,12 @@ CacheLevel::CacheLevel(int id, u64 s, u64 bs, int assoc, ReplacementPolicy p)
     sets.resize(num_sets, std::vector<CacheLine>(associativity));
 }
 
-void CacheLevel::set_policy(ReplacementPolicy p) { policy = p; }
+// Configures the replacement policy for cache line evictions.
+void CacheLevel::set_policy(ReplacementPolicy p) {
+    policy = p;
+}
 
+// Checks if the address tag is present in the indexed cache set. Returns true on hit.
 bool CacheLevel::access(u64 address, bool is_write) {
     access_counter++;
     u64 index = (address >> offset_bits) % num_sets;
@@ -37,6 +42,7 @@ bool CacheLevel::access(u64 address, bool is_write) {
     return false;
 }
 
+// Inserts an address into the cache set, selecting an invalid line or evicting based on policy.
 bool CacheLevel::insert(u64 address, bool is_write, u64& ev_addr, bool& ev_dirty) {
     u64 index = (address >> offset_bits) % num_sets;
     u64 tag = address >> (offset_bits + index_bits);
@@ -45,10 +51,16 @@ bool CacheLevel::insert(u64 address, bool is_write, u64& ev_addr, bool& ev_dirty
     u64 min_val = std::numeric_limits<u64>::max();
 
     for (int i = 0; i < associativity; i++) {
-        if (!sets[index][i].valid) { victim = i; break; }
+        if (!sets[index][i].valid) {
+            victim = i;
+            break;
+        }
         u64 val = (policy == LRU) ? sets[index][i].last_access_time : 
                   (policy == FIFO) ? sets[index][i].insertion_time : sets[index][i].freq;
-        if (val < min_val) { min_val = val; victim = i; }
+        if (val < min_val) {
+            min_val = val;
+            victim = i;
+        }
     }
 
     bool evicted = false;
@@ -62,6 +74,7 @@ bool CacheLevel::insert(u64 address, bool is_write, u64& ev_addr, bool& ev_dirty
     return evicted;
 }
 
+// Invalidates the line corresponding to address and returns whether it was dirty.
 bool CacheLevel::invalidate(u64 address) {
     u64 index = (address >> offset_bits) % num_sets;
     u64 tag = address >> (offset_bits + index_bits);
@@ -75,20 +88,38 @@ bool CacheLevel::invalidate(u64 address) {
     return false;
 }
 
+// Invalidates all cache blocks across the specified physical memory range.
 void CacheLevel::invalidate_frame(size_t start, size_t range) {
-    for (size_t a = start; a < start + range; a += block_size) invalidate(a);
+    for (size_t a = start; a < start + range; a += block_size) {
+        invalidate(a);
+    }
 }
 
-MemoryHierarchy::MemoryHierarchy(CacheLevel* a, CacheLevel* b, CacheLevel* c) : l1(a), l2(b), l3(c) {}
+// Displays hit count, miss count, and hit rate percentage for this cache level.
+void CacheLevel::display_stats() const {
+    double hr = (access_counter > 0) ? (double)hits / access_counter * 100.0 : 0.0;
 
+    std::cout << "L" << level_id << " Stats: "
+              << "Hits="   << std::setw(5) << std::left << hits 
+              << " | Misses=" << std::setw(5) << std::left << misses 
+              << " | Hit Rate=" << std::fixed << std::setprecision(2) << std::setw(6) << std::right << hr << "%\n";
+}
+
+// Initializes memory hierarchy connecting L1, L2, and L3 caches.
+MemoryHierarchy::MemoryHierarchy(CacheLevel* a, CacheLevel* b, CacheLevel* c)
+    : l1(a), l2(b), l3(c) {}
+
+// Invalidates the specified address range across all cache levels.
 void MemoryHierarchy::invalidate_physical_range(size_t addr, size_t size) {
     l1->invalidate_frame(addr, size);
     l2->invalidate_frame(addr, size);
     l3->invalidate_frame(addr, size);
 }
 
+// Traverses L1 -> L2 -> L3 to fulfill a read/write access, promoting lines and handling writebacks.
 std::string MemoryHierarchy::request(u64 address, bool is_write) {
-    u64 ev_addr; bool ev_dirty;
+    u64 ev_addr;
+    bool ev_dirty;
     if (l1->access(address, is_write)) return "L1 Hit";
     
     if (l2->access(address, is_write)) {
@@ -114,19 +145,13 @@ std::string MemoryHierarchy::request(u64 address, bool is_write) {
     return "RAM Miss (Fetched to Caches)";
 }
 
+// Recursively routes dirty line writebacks down the cache hierarchy.
 void MemoryHierarchy::handle_writeback(u64 addr, int level) {
     if (level == 1) l2->access(addr, true);
     else if (level == 2) l3->access(addr, true);
 }
-void CacheLevel::display_stats() const {
-    double hr = (access_counter > 0) ? (double)hits / access_counter * 100.0 : 0.0;
 
-    std::cout << "L" << level_id << " Stats: "
-              << "Hits="   << std::setw(5) << std::left << hits 
-              << " | Misses=" << std::setw(5) << std::left << misses 
-              << " | Hit Rate=" << std::fixed << std::setprecision(2) << std::setw(6) << std::right << hr << "%\n";
-}
-
+// Prints statistics summary across all three cache levels.
 void MemoryHierarchy::display_all_stats() const {
     std::cout << "\n--- Cache Hierarchy Statistics ---\n";
     l1->display_stats();
