@@ -4,13 +4,15 @@
    - init memory <size>
    - set cache_policy <LRU|FIFO|LFU>
    - set page_policy <LRU|FIFO|CLOCK>
-   - set allocator <buddy|first_fit|best_fit|worst_fit>
+   - set allocator <buddy|slab|first_fit|best_fit|worst_fit>
    - malloc <size> | free <id> | stats
    - read <v_addr> | write <v_addr>
    - dump memory | exit
 ====================================================
 > [System] Linear Memory Initialized: 1024 bytes.
 [System] Buddy Memory Initialized: 1024 bytes (Order 10).
+[System] Slab Allocator Initialized: 1024 bytes.
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes
 Physical memory initialized to 1024 bytes.
 > Cache replacement policy set to FIFO for all levels.
 > Page replacement policy set to FIFO.

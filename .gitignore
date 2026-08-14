@@ -6,6 +6,7 @@
 *.out
 main
 src/main
+memsim
 
 # Output files (optional, if generated)
 output/
