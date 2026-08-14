@@ -4,6 +4,7 @@ CXXFLAGS = -std=c++17 -Wall -g
 SRCS = main.cpp \
        src/MemoryAllocator.cpp \
        src/BuddyAllocator.cpp \
+       src/SlabAllocator.cpp \
        src/Cache.cpp \
        src/VirtualMemory.cpp
 

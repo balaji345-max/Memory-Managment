@@ -7,6 +7,7 @@
 
 #include "src/MemoryAllocator.h"
 #include "src/BuddyAllocator.h"
+#include "src/SlabAllocator.h"
 #include "src/Cache.h"
 #include "src/VirtualMemory.h"
 
@@ -21,6 +22,7 @@ std::vector<std::string> tokenize(const std::string& command) {
 int main() {
     MemoryAllocator linear_alloc;
     BuddyAllocator buddy_alloc;
+    SlabAllocator slab_alloc;
     Allocator* current_allocator = &linear_alloc;
     Alloc_Algo current_strategy = Firstfit;
 
@@ -42,7 +44,7 @@ int main() {
     std::cout << "   - init memory <size>\n";
     std::cout << "   - set cache_policy <LRU|FIFO|LFU>\n";
     std::cout << "   - set page_policy <LRU|FIFO|CLOCK>\n";
-    std::cout << "   - set allocator <buddy|first_fit|best_fit|worst_fit>\n";
+    std::cout << "   - set allocator <buddy|slab|first_fit|best_fit|worst_fit>\n";
     std::cout << "   - malloc <size> | free <id> | stats\n";
     std::cout << "   - read <v_addr> | write <v_addr>\n";
     std::cout << "   - dump memory | exit\n";
@@ -64,6 +66,7 @@ int main() {
                 system_memory_size = std::stoul(tokens[2]);
                 linear_alloc.init(system_memory_size);
                 buddy_alloc.init(system_memory_size);
+                slab_alloc.init(system_memory_size);
                 is_initialized = true;
                 std::cout << "Physical memory initialized to " << system_memory_size << " bytes.\n";
             } catch (...) {
@@ -121,6 +124,9 @@ int main() {
             if (strat == "buddy") {
                 current_allocator = &buddy_alloc;
                 std::cout << "Allocator set to Buddy System.\n";
+            } else if (strat == "slab") {
+                current_allocator = &slab_alloc;
+                std::cout << "Allocator set to Slab Allocator.\n";
             } else {
                 current_allocator = &linear_alloc;
                 if (strat == "best_fit") current_strategy = Bestfit;
