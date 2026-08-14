@@ -62,15 +62,25 @@ void TLB::invalidate(u64 vpn) {
     }
 }
 
-// Initializes page table, physical frame tracking, and populates the free frame list.
+// Initializes page table, frame tracking, and builds the linked list of all available free physical frames.
 VirtualMemory::VirtualMemory(MemoryHierarchy* cache, PageReplacementAlgo p) 
     : policy(p), cache_ptr(cache) {
     total_frames = PHYSICAL_MEM_SIZE / PAGE_SIZE;
     page_table.resize(VIRTUAL_MEM_SIZE / PAGE_SIZE);
     frame_table.assign(total_frames, -1);
 
-    for (int i = 0; i < static_cast<int>(total_frames); ++i) {
-        free_frame_list.push(i);
+    // Build free frame linked list in ascending order: [0] -> [1] -> ... -> [total_frames - 1] -> nullptr
+    for (int i = static_cast<int>(total_frames) - 1; i >= 0; --i) {
+        free_frame_head = new FreeFrameNode(i, free_frame_head);
+    }
+}
+
+// Cleans up any remaining nodes in the free frame linked list.
+VirtualMemory::~VirtualMemory() {
+    while (free_frame_head) {
+        FreeFrameNode* temp = free_frame_head;
+        free_frame_head = free_frame_head->next;
+        delete temp;
     }
 }
 
@@ -79,14 +89,21 @@ void VirtualMemory::set_replacement_policy(PageReplacementAlgo p) {
     policy = p;
 }
 
-// Retrieves the next available physical frame from the free frame list in O(1). Returns -1 if empty.
+// Retrieves and removes the head frame from the free-frame linked list in O(1). Returns -1 if empty.
 int VirtualMemory::find_free_frame() {
-    if (free_frame_list.empty()) {
+    if (!free_frame_head) {
         return -1;
     }
-    int frame = free_frame_list.front();
-    free_frame_list.pop();
+    FreeFrameNode* node = free_frame_head;
+    int frame = node->frame_number;
+    free_frame_head = free_frame_head->next;
+    delete node;
     return frame;
+}
+
+// Inserts a freed physical frame back to the front of the free-frame linked list in O(1).
+void VirtualMemory::release_frame(int frame_num) {
+    free_frame_head = new FreeFrameNode(frame_num, free_frame_head);
 }
 
 // Evicts a page using FIFO, LRU, or CLOCK policy, invalidates TLB/cache lines, and writes back dirty pages.

@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <queue>
 #include <string>
 #include <cstdint>
 #include "Cache.h"
@@ -13,6 +12,14 @@ const u64 VIRTUAL_MEM_SIZE = 4096;
 const u64 PHYSICAL_MEM_SIZE = 1024;
 
 enum PageReplacementAlgo { VM_FIFO, VM_LRU, VM_CLOCK };
+
+// Represents a node in the singly-linked free frame list.
+// In real OS kernels, the next pointer is stored directly within the unallocated physical frame itself.
+struct FreeFrameNode {
+    int frame_number;
+    FreeFrameNode* next;
+    FreeFrameNode(int fn, FreeFrameNode* nxt = nullptr) : frame_number(fn), next(nxt) {}
+};
 
 // Represents a translation cached in the Translation Lookaside Buffer (TLB).
 struct TLBEntry {
@@ -54,13 +61,13 @@ struct PageTableEntry {
 };
 
 // Virtual Memory Manager and Memory Management Unit (MMU) simulator.
-// Handles address translation, page fault servicing, free frame management via free list,
+// Handles address translation, page fault servicing, free frame tracking via a linked list,
 // page eviction (FIFO/LRU/Clock), TLB shootdowns, and cache invalidation on page eviction.
 class VirtualMemory {
 private:
     std::vector<PageTableEntry> page_table;
     std::vector<int> frame_table;
-    std::queue<int> free_frame_list;
+    FreeFrameNode* free_frame_head = nullptr;
     u64 total_frames;
     u64 access_counter = 0;
     u64 page_faults = 0;
@@ -71,15 +78,19 @@ private:
     int clock_hand = 0;
     MemoryHierarchy* cache_ptr; 
 
-    // Retrieves next available physical frame from free frame list in O(1). Returns -1 if empty.
+    // Retrieves next available physical frame from the free-frame linked list in O(1). Returns -1 if empty.
     int find_free_frame();
+
+    // Adds a deallocated physical frame back to the head of the free-frame linked list.
+    void release_frame(int frame_num);
 
     // Selects a victim page based on replacement policy, flushes TLB/cache, and evicts it.
     int evict_page(TLB& tlb);
 
 public:
-    // Initializes MMU with physical frames, populates free frame list, and connects cache.
+    // Initializes MMU with physical frames, links all initial free frames, and connects cache.
     VirtualMemory(MemoryHierarchy* cache, PageReplacementAlgo p = VM_LRU);
+    ~VirtualMemory();
 
     // Updates the active page replacement algorithm (FIFO, LRU, CLOCK).
     void set_replacement_policy(PageReplacementAlgo p);
