@@ -25,6 +25,16 @@ int TLB::lookup(u64 vpn) {
 // Inserts VPN -> PFN mapping into the TLB, evicting the least recently used entry if full.
 void TLB::insert(u64 vpn, u64 pfn) {
     int idx = vpn % sets;
+
+    // If an existing entry already holds this VPN, update it directly
+    for (int i = 0; i < ways; i++) {
+        if (table[idx][i].valid && table[idx][i].vpn == vpn) {
+            table[idx][i].pfn = pfn;
+            table[idx][i].last_access = timer;
+            return;
+        }
+    }
+
     int victim = 0;
     u64 min_t = std::numeric_limits<u64>::max();
 
@@ -39,6 +49,17 @@ void TLB::insert(u64 vpn, u64 pfn) {
         }
     }
     table[idx][victim] = {true, vpn, pfn, timer};
+}
+
+// Invalidates any cached TLB entry matching the virtual page number.
+void TLB::invalidate(u64 vpn) {
+    int idx = vpn % sets;
+    for (auto& entry : table[idx]) {
+        if (entry.valid && entry.vpn == vpn) {
+            entry.valid = false;
+            break;
+        }
+    }
 }
 
 // Initializes page table, physical frame tracking, and populates the free frame list.
@@ -68,8 +89,8 @@ int VirtualMemory::find_free_frame() {
     return frame;
 }
 
-// Evicts a page using FIFO, LRU, or CLOCK policy, invalidates associated cache lines, and writes back dirty pages.
-int VirtualMemory::evict_page() {
+// Evicts a page using FIFO, LRU, or CLOCK policy, invalidates TLB/cache lines, and writes back dirty pages.
+int VirtualMemory::evict_page(TLB& tlb) {
     int v_f = -1;
     int v_p = -1;
 
@@ -99,11 +120,16 @@ int VirtualMemory::evict_page() {
         }
     }
     
+    // Invalidate stale translation in the TLB (TLB shootdown)
+    tlb.invalidate(static_cast<u64>(v_p));
+
+    // Invalidate cache lines associated with this physical frame
     if (cache_ptr) {
         u64 physical_addr = static_cast<u64>(v_f) * PAGE_SIZE;
         cache_ptr->invalidate_physical_range(physical_addr, PAGE_SIZE);
     }
 
+    // Write back to simulated disk if page was dirty
     if (page_table[v_p].dirty) disk_accesses++;
     page_table[v_p].valid = false;
     frame_table[v_f] = -1;
@@ -112,6 +138,11 @@ int VirtualMemory::evict_page() {
 
 // Performs full MMU translation (TLB -> Page Table -> Page Fault handling) and returns physical address.
 ll VirtualMemory::translate(u64 v_addr, bool is_write, TLB& tlb, std::string& report) {
+    if (v_addr >= VIRTUAL_MEM_SIZE) {
+        report = "Segmentation Fault (Address Out of Bounds)";
+        return -1;
+    }
+
     access_counter++;
     u64 vpn = v_addr / PAGE_SIZE;
     u64 offset = v_addr % PAGE_SIZE;
@@ -120,6 +151,9 @@ ll VirtualMemory::translate(u64 v_addr, bool is_write, TLB& tlb, std::string& re
     if (pfn != -1) {
         report = "TLB Hit";
         page_hits++;
+        page_table[vpn].last_access_time = access_counter;
+        page_table[vpn].referenced = true;
+        if (is_write) page_table[vpn].dirty = true;
         return static_cast<ll>(pfn * PAGE_SIZE + offset);
     }
 
@@ -138,7 +172,7 @@ ll VirtualMemory::translate(u64 v_addr, bool is_write, TLB& tlb, std::string& re
     disk_accesses++;
 
     int f = find_free_frame();
-    if (f == -1) f = evict_page();
+    if (f == -1) f = evict_page(tlb);
 
     page_table[vpn] = {true, is_write, true, f, access_counter, access_counter};
     frame_table[f] = static_cast<int>(vpn);

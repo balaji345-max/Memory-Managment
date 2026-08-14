@@ -38,6 +38,9 @@ public:
 
     // Inserts or updates VPN -> PFN mapping in TLB using LRU eviction.
     void insert(u64 vpn, u64 pfn);
+
+    // Invalidates any cached entry matching the given virtual page number (TLB shootdown).
+    void invalidate(u64 vpn);
 };
 
 // Represents a single page entry in the page table.
@@ -52,7 +55,7 @@ struct PageTableEntry {
 
 // Virtual Memory Manager and Memory Management Unit (MMU) simulator.
 // Handles address translation, page fault servicing, free frame management via free list,
-// page eviction (FIFO/LRU/Clock), and cache invalidation on page eviction.
+// page eviction (FIFO/LRU/Clock), TLB shootdowns, and cache invalidation on page eviction.
 class VirtualMemory {
 private:
     std::vector<PageTableEntry> page_table;
@@ -71,8 +74,8 @@ private:
     // Retrieves next available physical frame from free frame list in O(1). Returns -1 if empty.
     int find_free_frame();
 
-    // Selects a victim page based on current replacement policy and evicts it.
-    int evict_page();
+    // Selects a victim page based on replacement policy, flushes TLB/cache, and evicts it.
+    int evict_page(TLB& tlb);
 
 public:
     // Initializes MMU with physical frames, populates free frame list, and connects cache.
