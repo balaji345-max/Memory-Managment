@@ -13,12 +13,11 @@ An end-to-end virtual-to-physical memory pipeline simulator built in C++17. Feat
 
 ## 📋 Table of Contents
 
-- [System Architecture & Design](#-system-architecture--design)
+- [System Architecture & Visual Flowcharts](#-system-architecture--visual-flowcharts)
   - [1. Full Virtual Memory Pipeline Flow](#1-full-virtual-memory-pipeline-flow)
   - [2. x86 4-Level Page Table Translation Flow](#2-x86-4-level-page-table-translation-flow)
   - [3. Memory Allocator Architecture & Fine-Grained Locking](#3-memory-allocator-architecture--fine-grained-locking)
-  - [4. POSIX MMap Manager Flowchart](#4-posix-mmap-manager-flowchart)
-  - [5. Multithreaded Concurrency Model](#5-multithreaded-concurrency-model)
+  - [4. POSIX MMap Manager & Multithreaded Concurrency Architecture](#4-posix-mmap-manager--multithreaded-concurrency-architecture)
 - [✨ Key Features](#-key-features)
 - [📁 Project Structure](#-project-structure)
 - [🛠️ Build & Installation](#️-build--installation)
@@ -28,11 +27,16 @@ An end-to-end virtual-to-physical memory pipeline simulator built in C++17. Feat
 
 ---
 
-## 📐 System Architecture & Design
+## 📐 System Architecture & Visual Flowcharts
 
 ### 1. Full Virtual Memory Pipeline Flow
 
 Every virtual address read/write request passes through a multi-tier memory system comprising TLB translation, multi-level page tables, mmap region validation, L1–L3 cache lookups, and simulated physical RAM.
+
+![Virtual Memory Pipeline Flowchart](docs/images/virtual_memory_pipeline.jpg)
+
+<details>
+<summary><b>View Interactive Mermaid Flowchart</b></summary>
 
 ```mermaid
 flowchart TD
@@ -73,12 +77,18 @@ flowchart TD
     L3_CACHE -- Yes --> L2_FILL[Promote to L2 & L1] --> SUCCESS
     L3_CACHE -- No --> RAM_FETCH[Fetch from Main RAM] --> L3_FILL[Fill L3, L2, L1] --> SUCCESS
 ```
+</details>
 
 ---
 
 ### 2. x86 4-Level Page Table Translation Flow
 
 The simulator features an x86-style 4-level hierarchical page table (`PML4` → `PDPT` → `PD` → `PT`), decomposing a 24-bit virtual address into 4 level indices plus an offset.
+
+![x86 4-Level Page Table Address Translation](docs/images/x86_page_table_walk.jpg)
+
+<details>
+<summary><b>View Interactive Mermaid Diagram</b></summary>
 
 ```mermaid
 flowchart LR
@@ -111,12 +121,18 @@ flowchart LR
 
     PFN --> PHYS[Physical Address = PFN << 6 | Offset]
 ```
+</details>
 
 ---
 
 ### 3. Memory Allocator Architecture & Fine-Grained Locking
 
 Three polymorphic memory allocators inherit from the unified `Allocator` interface, secured with fine-grained concurrency control to eliminate global lock contention.
+
+![Memory Allocator Architecture & Fine-Grained Locking](docs/images/memory_allocators.jpg)
+
+<details>
+<summary><b>View Interactive Mermaid Flowchart</b></summary>
 
 ```mermaid
 flowchart TD
@@ -153,46 +169,18 @@ flowchart TD
         ALLOC_SLOT --> CACHE_UNLOCK[Per-Cache Mutex Unlock]
     end
 ```
+</details>
 
 ---
 
-### 4. POSIX MMap Manager Flowchart
+### 4. POSIX MMap Manager & Multithreaded Concurrency Architecture
 
-The `MMapManager` provides dynamic virtual memory mapping, region tracking, protection verification, and file-backed virtual page mapping.
+The `MMapManager` provides dynamic virtual memory mapping, region tracking, and protection verification, while the `ThreadedBenchmark` engine manages concurrent `std::thread` workers.
 
-```mermaid
-flowchart TD
-    SYSCALL[mmap / munmap / mprotect Call] --> ACTION{Action Type}
+![POSIX MMap Manager and Multithreaded Benchmark Engine](docs/images/posix_mmap_and_multithreading.jpg)
 
-    subgraph do_mmap
-        ACTION -->|mmap| ALIGN[Page-Align Requested Length]
-        ALIGN --> FIXED_CHK{MAP_FIXED Flag?}
-        FIXED_CHK -- Yes --> OVERLAP_CHK{Check Overlaps}
-        OVERLAP_CHK -- Overlap --> FAIL_MMAP[Return -1 Error]
-        OVERLAP_CHK -- Clean --> USE_ADDR[Use Target Address]
-        FIXED_CHK -- No --> AUTO_ADDR[Auto-Assign from mmap_base]
-        AUTO_ADDR & USE_ADDR --> CREATE_REG[Create MMapRegion struct]
-        CREATE_REG --> STORE[Push to Active Regions Vector]
-    end
-
-    subgraph do_munmap
-        ACTION -->|munmap| SEARCH_MAP[Search MMapRegion by Start Address]
-        SEARCH_MAP --> FOUND{Region Found?}
-        FOUND -- Yes --> DEACTIVATE[Mark Region Active = False]
-        FOUND -- No --> FAIL_MUNMAP[Return -1 Error]
-    end
-
-    subgraph do_mprotect
-        ACTION -->|mprotect| FIND_REG[Find Region Containing Address]
-        FIND_REG --> UPDATE_PROT[Update Protection Mask: PROT_READ/WRITE/EXEC]
-    end
-```
-
----
-
-### 5. Multithreaded Concurrency Model
-
-The simulator features multithreaded stress testing where worker threads independently perform allocations, page translations, and cache lookups concurrently.
+<details>
+<summary><b>View Interactive Mermaid Diagram</b></summary>
 
 ```mermaid
 flowchart TD
@@ -222,6 +210,7 @@ flowchart TD
     JOIN --> AGGREGATE[Aggregate Ops, Elapsed Time, Ops/Sec Throughput]
     AGGREGATE --> REPORT[Generate Unicode Threaded Report]
 ```
+</details>
 
 ---
 
@@ -262,6 +251,11 @@ Memory-Managment/
 ├── Makefile                     # Build script with C++17, -pthread, and debug/bench targets
 ├── main.cpp                     # Interactive CLI simulator entry point
 ├── README.md                    # System documentation and architecture guide
+├── docs/images/                 # High-resolution architectural flowcharts & visual diagrams
+│   ├── virtual_memory_pipeline.jpg
+│   ├── x86_page_table_walk.jpg
+│   ├── memory_allocators.jpg
+│   └── posix_mmap_and_multithreading.jpg
 ├── src/
 │   ├── Allocator.h              # Abstract base class for memory allocators & PAGE_SIZE definition
 │   ├── MemoryAllocator.h/.cpp   # Linear allocator (First/Best/Worst-fit, coalescing, mutex)
