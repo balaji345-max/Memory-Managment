@@ -18,6 +18,7 @@ MemoryAllocator::~MemoryAllocator() {
 
 // Returns the start address of the block with the given id, or 0 if not found.
 size_t MemoryAllocator::get_address(int id) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     if (id_map.find(id) != id_map.end()) {
         return id_map[id]->start_address;
     }
@@ -26,6 +27,7 @@ size_t MemoryAllocator::get_address(int id) {
 
 // Resets all state and creates a single free block spanning the entire memory pool.
 void MemoryAllocator::init(size_t mem_size) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     if (head) {
         Mem_Block* curr = head;
         while (curr) {
@@ -42,6 +44,8 @@ void MemoryAllocator::init(size_t mem_size) {
 
     total_size = mem_size;
     next_Id = 1;
+    total_alloc_attempts = 0;
+    successful_allocations = 0;
     head = new Mem_Block(0, mem_size, 0, true, 0);
     std::cout << "[System] Linear Memory Initialized: " << mem_size << " bytes.\n";
 }
@@ -49,6 +53,7 @@ void MemoryAllocator::init(size_t mem_size) {
 // Allocates mem_size bytes using the specified strategy (First/Best/Worst Fit).
 // Splits the chosen block if it's larger than requested. Returns block ID or -1 on failure.
 int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     if (mem_size == 0) return -1;
     total_alloc_attempts++;
 
@@ -88,6 +93,7 @@ int MemoryAllocator::allocate(size_t mem_size, Alloc_Algo algo) {
 
 // Frees the block with the given ID and coalesces with adjacent free blocks.
 void MemoryAllocator::deallocate(int Id) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     if (id_map.find(Id) == id_map.end()) return;
 
     Mem_Block* curr = id_map[Id];
@@ -115,6 +121,7 @@ void MemoryAllocator::deallocate(int Id) {
 
 // Prints each block's address range and FREE/USED status.
 void MemoryAllocator::display() {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     Mem_Block* curr = head;
     while (curr) {
         std::cout << "[" << std::hex << std::uppercase << "0x" << std::setfill('0') << std::setw(4) << curr->start_address
@@ -127,6 +134,7 @@ void MemoryAllocator::display() {
 
 // Prints utilization, internal/external fragmentation, and allocation success rate.
 void MemoryAllocator::get_statistics() {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     size_t total_free = 0, used = 0, internal_frag = 0;
     size_t largest_free_block = 0; 
 

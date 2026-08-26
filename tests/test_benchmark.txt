@@ -1,0 +1,20 @@
+init memory 4096
+set allocator first_fit
+set cache_policy LRU
+set page_policy LRU
+
+bench generate sequential 500 4096
+bench run
+
+bench generate random 500 4096
+bench run
+
+bench generate temporal 500 4096
+bench run
+
+bench generate spec_int 500 4096
+bench run
+
+bench report
+stats
+exit

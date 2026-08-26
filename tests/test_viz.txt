@@ -1,0 +1,30 @@
+init memory 4096
+set allocator first_fit
+set cache_policy LRU
+set page_policy LRU
+
+malloc 100
+malloc 200
+malloc 300
+free 2
+
+viz memory
+viz frag
+
+set allocator buddy
+malloc 128
+malloc 64
+free 4
+
+viz memory
+
+set allocator slab
+malloc 16
+malloc 32
+malloc 64
+free 6
+
+viz memory
+viz cache
+viz all
+exit

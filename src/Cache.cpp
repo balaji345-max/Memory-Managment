@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <atomic>
 
 // Configures cache capacity, line size, associativity, and computes bit-shift offsets.
 CacheLevel::CacheLevel(int id, u64 s, u64 bs, int assoc, ReplacementPolicy p)
@@ -16,6 +17,13 @@ CacheLevel::CacheLevel(int id, u64 s, u64 bs, int assoc, ReplacementPolicy p)
     offset_bits = static_cast<u64>(std::log2(block_size));
     index_bits  = static_cast<u64>(std::log2(num_sets));
     sets.resize(num_sets, std::vector<CacheLine>(associativity));
+    
+    // Allocate per-set spinlocks for fine-grained concurrency
+    set_locks = new SpinLock[num_sets];
+}
+
+CacheLevel::~CacheLevel() {
+    delete[] set_locks;
 }
 
 // Configures the replacement policy for cache line evictions.
@@ -25,10 +33,13 @@ void CacheLevel::set_policy(ReplacementPolicy p) {
 
 // Checks if the address tag is present in the indexed cache set. Returns true on hit.
 bool CacheLevel::access(u64 address, bool is_write) {
-    access_counter++;
+    // We only need to lock the specific set being accessed
     u64 index = (address >> offset_bits) % num_sets;
     u64 tag = address >> (offset_bits + index_bits);
 
+    SpinLockGuard lock(set_locks[index]);
+
+    access_counter++;
     for (auto& line : sets[index]) {
         if (line.valid && line.tag == tag) {
             hits++;
@@ -46,6 +57,8 @@ bool CacheLevel::access(u64 address, bool is_write) {
 bool CacheLevel::insert(u64 address, bool is_write, u64& ev_addr, bool& ev_dirty) {
     u64 index = (address >> offset_bits) % num_sets;
     u64 tag = address >> (offset_bits + index_bits);
+
+    SpinLockGuard lock(set_locks[index]);
 
     int victim = -1;
     u64 min_val = std::numeric_limits<u64>::max();
@@ -78,6 +91,9 @@ bool CacheLevel::insert(u64 address, bool is_write, u64& ev_addr, bool& ev_dirty
 bool CacheLevel::invalidate(u64 address) {
     u64 index = (address >> offset_bits) % num_sets;
     u64 tag = address >> (offset_bits + index_bits);
+    
+    SpinLockGuard lock(set_locks[index]);
+    
     for (auto& line : sets[index]) {
         if (line.valid && line.tag == tag) {
             bool was_dirty = line.dirty;
@@ -90,6 +106,7 @@ bool CacheLevel::invalidate(u64 address) {
 
 // Invalidates all cache blocks across the specified physical memory range.
 void CacheLevel::invalidate_frame(size_t start, size_t range) {
+    // Iterate blocks and lock/invalidate individually to avoid long lock hold times
     for (size_t a = start; a < start + range; a += block_size) {
         invalidate(a);
     }
@@ -103,6 +120,13 @@ void CacheLevel::display_stats() const {
               << "Hits="   << std::setw(5) << std::left << hits 
               << " | Misses=" << std::setw(5) << std::left << misses 
               << " | Hit Rate=" << std::fixed << std::setprecision(2) << std::setw(6) << std::right << hr << "%\n";
+}
+
+// Resets all statistics counters.
+void CacheLevel::reset_stats() {
+    hits = 0;
+    misses = 0;
+    access_counter = 0;
 }
 
 // Initializes memory hierarchy connecting L1, L2, and L3 caches.
@@ -158,4 +182,10 @@ void MemoryHierarchy::display_all_stats() const {
     l2->display_stats();
     l3->display_stats();
     std::cout << "----------------------------------\n";
+}
+
+void MemoryHierarchy::reset_all_stats() {
+    l1->reset_stats();
+    l2->reset_stats();
+    l3->reset_stats();
 }

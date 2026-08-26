@@ -22,8 +22,12 @@ SlabAllocator::~SlabAllocator() = default;
 
 // Resets slab caches, frees existing slabs, and prepares pool for new allocations.
 void SlabAllocator::init(size_t mem_size) {
+    std::lock_guard<std::mutex> pool_lock(pool_mutex);
+    std::lock_guard<std::mutex> id_lock(id_map_mutex);
+
     id_map.clear();
     for (size_t i = 0; i < NUM_CACHES; i++) {
+        std::lock_guard<std::mutex> cache_lock(caches[i].cache_mutex);
         for (auto* s : caches[i].partial) delete s;
         for (auto* s : caches[i].full)    delete s;
         for (auto* s : caches[i].empty)   delete s;
@@ -64,6 +68,7 @@ int SlabAllocator::find_cache_index(size_t size) {
 
 // Allocates a new contiguous 16-page slab from the system pool for the designated cache.
 Slab* SlabAllocator::create_slab(size_t cache_idx) {
+    // pool_mutex must be held by caller
     if (next_slab_address + SLAB_SIZE > total_size) {
         return nullptr;
     }
@@ -74,6 +79,7 @@ Slab* SlabAllocator::create_slab(size_t cache_idx) {
 }
 
 // Allocates a slot matching the requested size from partial, empty, or newly created slabs.
+// Locks: per-cache mutex for slab list access, pool_mutex for new slab allocation.
 int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     if (mem_size == 0) return -1;
 
@@ -85,6 +91,8 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
     }
 
     SlabCache& cache = caches[cache_idx];
+    std::lock_guard<std::mutex> cache_lock(cache.cache_mutex);
+
     Slab* target_slab = nullptr;
     int slot = -1;
 
@@ -107,7 +115,11 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
             cache.partial.push_back(target_slab);
         }
     } else {
-        target_slab = create_slab(cache_idx);
+        // Need to allocate a new slab from the pool
+        {
+            std::lock_guard<std::mutex> pool_lock(pool_mutex);
+            target_slab = create_slab(cache_idx);
+        }
         if (!target_slab) {
             std::cout << "[Slab] Error: Out of memory, cannot allocate new page slab.\n";
             return -1;
@@ -123,9 +135,13 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
 
     if (slot == -1) return -1;
 
-    int id = next_id++;
+    int id;
     size_t addr = target_slab->slot_address(slot);
-    id_map[id] = {static_cast<size_t>(cache_idx), target_slab, static_cast<size_t>(slot), addr};
+    {
+        std::lock_guard<std::mutex> id_lock(id_map_mutex);
+        id = next_id++;
+        id_map[id] = {static_cast<size_t>(cache_idx), target_slab, static_cast<size_t>(slot), addr};
+    }
     cache.total_allocations++;
 
     return id;
@@ -133,16 +149,22 @@ int SlabAllocator::allocate(size_t mem_size, Alloc_Algo) {
 
 // Frees the allocated block, returning its slot and transitioning slab states between full/partial/empty.
 void SlabAllocator::deallocate(int block_id) {
-    auto it = id_map.find(block_id);
-    if (it == id_map.end()) {
-        std::cout << "[Slab] Error: Block id=" << block_id << " not found.\n";
-        return;
+    SlabAllocRecord rec;
+    {
+        std::lock_guard<std::mutex> id_lock(id_map_mutex);
+        auto it = id_map.find(block_id);
+        if (it == id_map.end()) {
+            std::cout << "[Slab] Error: Block id=" << block_id << " not found.\n";
+            return;
+        }
+        rec = it->second;
+        id_map.erase(it);
     }
 
-    SlabAllocRecord& rec = it->second;
     SlabCache& cache = caches[rec.cache_index];
-    Slab* slab = rec.slab;
+    std::lock_guard<std::mutex> cache_lock(cache.cache_mutex);
 
+    Slab* slab = rec.slab;
     bool was_full = slab->is_full();
     slab->free_slot(rec.slot_index);
     cache.total_frees++;
@@ -160,12 +182,11 @@ void SlabAllocator::deallocate(int block_id) {
             cache.empty.push_back(slab);
         }
     }
-
-    id_map.erase(it);
 }
 
 // Returns start address of allocated slab slot.
 size_t SlabAllocator::get_address(int block_id) {
+    std::lock_guard<std::mutex> id_lock(id_map_mutex);
     auto it = id_map.find(block_id);
     if (it == id_map.end()) return 0;
     return it->second.address;
@@ -176,6 +197,7 @@ void SlabAllocator::display() {
     std::cout << "=== Page-Backed Slab Allocator Memory Layout ===\n";
     for (size_t i = 0; i < NUM_CACHES; i++) {
         SlabCache& cache = caches[i];
+        std::lock_guard<std::mutex> cache_lock(cache.cache_mutex);
         size_t total = cache.total_slabs();
         if (total == 0) continue;
 
@@ -216,7 +238,10 @@ void SlabAllocator::get_statistics() {
     std::cout << "Slab Pages Used   : " << used_pages << "/" << total_pages << " pages ("
               << next_slab_address << " bytes, "
               << (total_size > 0 ? (double)next_slab_address / total_size * 100.0 : 0.0) << "%)\n";
-    std::cout << "Active Allocations: " << id_map.size() << "\n\n";
+    {
+        std::lock_guard<std::mutex> id_lock(id_map_mutex);
+        std::cout << "Active Allocations: " << id_map.size() << "\n\n";
+    }
 
     size_t total_used_mem = 0;
 
@@ -233,6 +258,7 @@ void SlabAllocator::get_statistics() {
 
     for (size_t i = 0; i < NUM_CACHES; i++) {
         SlabCache& cache = caches[i];
+        std::lock_guard<std::mutex> cache_lock(cache.cache_mutex);
         size_t total = cache.total_slabs();
         if (total == 0 && cache.total_allocations == 0) continue;
 

@@ -1,5 +1,7 @@
 #pragma once
 #include "Allocator.h"
+#include "ThreadSafety.h"
+#include <mutex>
 
 // Represents a single block in the doubly-linked free list.
 struct Mem_Block {
@@ -18,6 +20,7 @@ struct Mem_Block {
 // Linear (contiguous) memory allocator using a doubly-linked list of blocks.
 // Supports First-Fit, Best-Fit, and Worst-Fit allocation strategies.
 // Performs coalescing of adjacent free blocks on deallocation.
+// Thread-safe: a single mutex guards all linked-list mutations.
 class MemoryAllocator : public Allocator {
 private:
     size_t total_size;
@@ -26,6 +29,8 @@ private:
     std::unordered_map<int, Mem_Block*> id_map;
     size_t total_alloc_attempts = 0;
     size_t successful_allocations = 0;
+
+    mutable std::mutex alloc_mutex;  // guards linked list + id_map
 
 public:
     MemoryAllocator();
@@ -36,4 +41,10 @@ public:
     size_t get_address(int Id) override;
     void display() override;
     void get_statistics() override;
+
+    // Accessors for visualization and benchmarking
+    Mem_Block*  get_head()       const { return head; }
+    size_t      get_total_size() const { return total_size; }
+    size_t      get_alloc_attempts()  const { return total_alloc_attempts; }
+    size_t      get_successful_allocs() const { return successful_allocations; }
 };

@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <memory>
+#include "ThreadSafety.h"
 
 using u64 = uint64_t;
 
@@ -18,6 +20,7 @@ struct CacheLine {
 };
 
 // Represents one level (e.g. L1, L2, L3) of set-associative CPU cache.
+// Thread-safe: per-set SpinLock allows concurrent access to different sets.
 class CacheLevel {
 private:
     int level_id;
@@ -32,10 +35,19 @@ private:
     u64 hits = 0;
     u64 misses = 0;
     u64 access_counter = 0;
+
+    // Per-set spinlocks for fine-grained concurrency
+    SpinLock* set_locks = nullptr;
     
 public:
     // Initializes cache level parameters and calculates indexing bits.
     CacheLevel(int id, u64 s, u64 bs, int assoc, ReplacementPolicy p);
+
+    ~CacheLevel();
+
+    // Non-copyable, non-movable (owns raw spinlock array)
+    CacheLevel(const CacheLevel&) = delete;
+    CacheLevel& operator=(const CacheLevel&) = delete;
 
     // Updates cache line eviction policy (LRU, FIFO, LFU).
     void set_policy(ReplacementPolicy p);
@@ -54,6 +66,20 @@ public:
 
     // Prints hits, misses, and hit rate percentage for this cache level.
     void display_stats() const;
+
+    // Resets all statistics counters (for benchmarking before/after snapshots).
+    void reset_stats();
+
+    // Accessors for benchmarking and visualization
+    u64 get_hits()          const { return hits; }
+    u64 get_misses()        const { return misses; }
+    u64 get_accesses()      const { return access_counter; }
+    int get_level_id()      const { return level_id; }
+    u64 get_num_sets()      const { return num_sets; }
+    int get_associativity() const { return associativity; }
+    u64 get_block_size()    const { return block_size; }
+    u64 get_size()          const { return size; }
+    const std::vector<std::vector<CacheLine>>& get_sets() const { return sets; }
 };
 
 // Multi-level cache hierarchy controller (L1 -> L2 -> L3 -> RAM).
@@ -79,4 +105,12 @@ public:
 
     // Prints comprehensive statistics for all cache levels.
     void display_all_stats() const;
+
+    // Resets statistics across all levels.
+    void reset_all_stats();
+
+    // Level accessors for benchmarking
+    CacheLevel* get_l1() { return l1; }
+    CacheLevel* get_l2() { return l2; }
+    CacheLevel* get_l3() { return l3; }
 };

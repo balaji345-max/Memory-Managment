@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <unordered_map>
+#include <mutex>
 
 // Number of 64-byte pages allocated for each individual slab (16 pages = 1024 bytes).
 constexpr size_t PAGES_PER_SLAB = 16;
@@ -60,6 +61,8 @@ struct Slab {
 };
 
 // Manages partial, full, and empty slabs for a specific object size.
+// Each cache has its own mutex for fine-grained locking: different size
+// classes can be allocated concurrently without contention.
 struct SlabCache {
     size_t object_size;
     size_t slab_size;
@@ -71,6 +74,8 @@ struct SlabCache {
     size_t total_allocations = 0;
     size_t total_frees = 0;
 
+    mutable std::mutex cache_mutex;  // fine-grained per-cache lock
+
     SlabCache() : object_size(0), slab_size(SLAB_SIZE) {}
     explicit SlabCache(size_t obj_sz) : object_size(obj_sz), slab_size(SLAB_SIZE) {}
 
@@ -79,6 +84,10 @@ struct SlabCache {
         for (auto* s : full) delete s;
         for (auto* s : empty) delete s;
     }
+
+    // SlabCache is not copyable/movable (has mutex)
+    SlabCache(const SlabCache&) = delete;
+    SlabCache& operator=(const SlabCache&) = delete;
 
     // Returns total slot capacity per individual slab.
     size_t slots_per_slab() const { return slab_size / object_size; }
@@ -106,6 +115,7 @@ struct SlabAllocRecord {
 
 // Page-Backed Kernel-Style Slab Allocator.
 // Allocates full page blocks from physical memory and subdivides them into dedicated object caches (8B to 512B).
+// Thread-safe with fine-grained per-cache locking plus a pool mutex for slab creation.
 class SlabAllocator : public Allocator {
 private:
     static constexpr size_t NUM_CACHES = 7;
@@ -118,6 +128,9 @@ private:
 
     SlabCache caches[NUM_CACHES];
     std::unordered_map<int, SlabAllocRecord> id_map;
+
+    std::mutex pool_mutex;   // guards next_slab_address and id_map
+    mutable std::mutex id_map_mutex;  // guards id_map
 
     // Finds the index of the smallest cache size that fits the requested size.
     int find_cache_index(size_t size);
@@ -146,4 +159,10 @@ public:
 
     // Outputs page consumption, slot utilization, and internal fragmentation metrics.
     void get_statistics() override;
+
+    // Accessors for visualization
+    const SlabCache* get_caches()    const { return caches; }
+    size_t get_num_caches()          const { return NUM_CACHES; }
+    size_t get_total_size_val()      const { return total_size; }
+    size_t get_next_slab_address()   const { return next_slab_address; }
 };

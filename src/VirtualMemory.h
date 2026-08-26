@@ -2,8 +2,12 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <mutex>
 #include "Cache.h"
 #include "Allocator.h"
+#include "ThreadSafety.h"
+#include "MultiLevelPageTable.h"
+#include "MMap.h"
 
 using ll = long long;
 using u64 = uint64_t;
@@ -29,7 +33,11 @@ struct TLBEntry {
 };
 
 // Set-associative Translation Lookaside Buffer with LRU replacement.
+// Thread-safe via internal SpinLock.
 class TLB {
+private:
+    SpinLock tlb_lock;
+
 public:
     int sets;
     int ways;
@@ -49,7 +57,7 @@ public:
     void invalidate(u64 vpn);
 };
 
-// Represents a single page entry in the page table.
+// Represents a single page entry in the flat page table.
 struct PageTableEntry {
     bool valid = false;
     bool dirty = false;
@@ -76,6 +84,14 @@ private:
     PageReplacementAlgo policy;
     int clock_hand = 0;
     MemoryHierarchy* cache_ptr; 
+    
+    bool use_multi_level = false;
+    MultiLevelPageTable multi_level_pt;
+
+    MMapManager* mmap_mgr = nullptr;
+
+    mutable std::mutex page_table_mutex;
+    mutable std::mutex frame_list_mutex;
 
     // Retrieves next available physical frame from the free-frame linked list in O(1). Returns -1 if empty.
     int find_free_frame();
@@ -91,6 +107,12 @@ public:
     VirtualMemory(MemoryHierarchy* cache, PageReplacementAlgo p = VM_LRU);
     ~VirtualMemory();
 
+    // Attaches the mmap manager for memory protection and auto-allocation checks.
+    void set_mmap_manager(MMapManager* mgr) { mmap_mgr = mgr; }
+
+    // Switches between flat page table and 4-level x86 page table simulation.
+    void set_multi_level_paging(bool enable);
+
     // Updates the active page replacement algorithm (FIFO, LRU, CLOCK).
     void set_replacement_policy(PageReplacementAlgo p);
 
@@ -99,4 +121,11 @@ public:
 
     // Displays VM hits, faults, and disk I/O metrics.
     void get_statistics();
+
+    void reset_stats();
+
+    // Accessors for benchmarking
+    u64 get_page_faults() const { return page_faults; }
+    u64 get_page_hits()   const { return page_hits; }
+    MultiLevelPageTable& get_multi_level_pt() { return multi_level_pt; }
 };

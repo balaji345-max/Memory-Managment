@@ -57,6 +57,7 @@ size_t BuddyAllocator::round_to_buddy_size(size_t bytes) {
 
 // Initializes the buddy memory pool to a power-of-2 page size.
 void BuddyAllocator::init(size_t size) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     for (auto& entry : allocated) {
         delete entry.second;
     }
@@ -85,6 +86,7 @@ void BuddyAllocator::init(size_t size) {
 
 // Allocates memory in units of 2^k pages by splitting larger buddy blocks down to requested order.
 int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     if (size == 0) return -1;
 
     size_t req_size = round_to_buddy_size(size);
@@ -125,6 +127,7 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
 
 // Frees the allocated page block and recursively merges with its buddy page block.
 void BuddyAllocator::deallocate(int id) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     auto it = allocated.find(id);
     if (it == allocated.end()) return;
 
@@ -169,6 +172,7 @@ void BuddyAllocator::deallocate(int id) {
 
 // Returns start address of allocated buddy page block.
 size_t BuddyAllocator::get_address(int id) {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     auto it = allocated.find(id);
     if (it == allocated.end()) return SIZE_MAX;
     return it->second->address;
@@ -176,6 +180,7 @@ size_t BuddyAllocator::get_address(int id) {
 
 // Displays free lists across all page order levels.
 void BuddyAllocator::display() {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     std::cout << "--- Page-Level Buddy Free Lists ---\n";
     for (size_t i = 0; i < free_lists.size(); i++) {
         size_t pages = (1ULL << i);
@@ -196,6 +201,7 @@ void BuddyAllocator::display() {
 
 // Prints page-level memory metrics, allocated pages, and free memory breakdown.
 void BuddyAllocator::get_statistics() {
+    std::lock_guard<std::mutex> lock(alloc_mutex);
     size_t free_mem = 0;
     size_t free_blocks = 0;
 

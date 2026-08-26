@@ -1,0 +1,34 @@
+init memory 4096
+set allocator first_fit
+set cache_policy LRU
+set page_policy LRU
+set pagetable multilevel
+
+malloc 100
+malloc 200
+malloc 64
+
+read 0
+read 64
+read 128
+read 192
+read 0
+read 64
+
+write 256
+write 320
+
+stats
+
+free 1
+free 2
+
+malloc 80
+malloc 150
+
+viz memory
+viz frag
+viz cache
+
+stats
+exit

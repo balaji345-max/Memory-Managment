@@ -1,0 +1,28 @@
+init memory 4096
+set allocator first_fit
+set cache_policy LRU
+set page_policy LRU
+
+mmap 256 rw
+mmap 512 r
+mmap 128 rwx
+mmap list
+
+read 2048
+read 2112
+write 2048
+read 2304
+
+mprotect 2304 rw
+write 2304
+
+munmap 2048
+mmap list
+
+create_file testfile 1024
+mmap 256 rw file testfile
+mmap list
+
+viz mmap
+stats
+exit

@@ -1,0 +1,24 @@
+init memory 4096
+set allocator first_fit
+set cache_policy LRU
+set page_policy LRU
+
+# Full pipeline: 4 threads × 200 ops (malloc/free/read/write through MMU+cache)
+bench threaded 4 200
+
+# Allocator-only: 8 threads × 500 ops (concurrent malloc/free)
+bench alloc_stress 8 500
+
+# Cache-only: 4 threads × 1000 ops (concurrent read/write to cache)
+bench cache_stress 4 1000
+
+# Buddy allocator stress
+set allocator buddy
+bench alloc_stress 4 200
+
+# Slab allocator stress
+set allocator slab
+bench alloc_stress 4 200
+
+stats
+exit
