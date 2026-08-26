@@ -1,0 +1,411 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|slab|first_fit|best_fit|worst_fit>
+   - set pagetable <flat|multilevel>
+   - set viz <on|off>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - mmap <length> [r|rw|rwx] [file <name>]
+   - munmap <addr> | mprotect <addr> <r|rw|rwx|none>
+   - mmap list | create_file <name> <size>
+   - bench generate <pattern> <count> [addr_range]
+   - bench load <file> | bench run | bench report
+   - bench threaded <threads> <ops>  (full pipeline stress)
+   - bench alloc_stress <threads> <ops>
+   - bench cache_stress <threads> <ops>
+   - viz memory|frag|cache|mmap|all
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 4096 bytes.
+[System] Page-Level Buddy Memory Initialized: 4096 bytes (64 pages, Order 6).
+[System] Page-Backed Slab Allocator Initialized: 4096 bytes (64 pages).
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes (16 pages)
+Physical memory initialized to 4096 bytes.
+> Allocator set to Linear (first_fit).
+> Cache replacement policy set to LRU for all levels.
+> Page replacement policy set to LRU.
+> > Unknown command: #
+> [ThreadBench] Running 4 threads × 200 ops (full pipeline)...
+
+╔══════════════════════════════════════════════════════╗
+║        Multithreaded Stress Test Report             ║
+╠══════════════════════════════════════════════════════╣
+║ Threads             :                              4 ║
+║ Total operations    :                            800 ║
+║ Allocations         :                            192 ║
+║ Frees               :                            105 ║
+║ Reads               :                            307 ║
+║ Writes              :                            231 ║
+║ Alloc failures      :                             87 ║
+╠══════════════════════════════════════════════════════╣
+║ Wall-clock time     :                       1.430 ms ║
+║ Avg per-thread time :                       1.339 ms ║
+║ Throughput          :                   559343 ops/s ║
+║ Concurrency status  :             CLEAN (no crashes) ║
+╠══════════════════════════════════════════════════════╣
+║  Thread  │   Ops   │ Alloc │ Free  │  Time(ms)      ║
+║──────────┼─────────┼───────┼───────┼────────────────║
+║  T0      │     200 │    47 │    27 │         1.313  ║
+║  T1      │     200 │    41 │    20 │         1.365  ║
+║  T2      │     200 │    56 │    32 │         1.321  ║
+║  T3      │     200 │    48 │    26 │         1.356  ║
+╚══════════════════════════════════════════════════════╝
+
+> > Unknown command: #
+> [ThreadBench] Running 8 threads × 500 ops (allocator stress)...
+
+╔══════════════════════════════════════════════════════╗
+║        Multithreaded Stress Test Report             ║
+╠══════════════════════════════════════════════════════╣
+║ Threads             :                              8 ║
+║ Total operations    :                           4000 ║
+║ Allocations         :                           2579 ║
+║ Frees               :                           1542 ║
+║ Reads               :                              0 ║
+║ Writes              :                              0 ║
+║ Alloc failures      :                           1037 ║
+╠══════════════════════════════════════════════════════╣
+║ Wall-clock time     :                       9.683 ms ║
+║ Avg per-thread time :                       9.333 ms ║
+║ Throughput          :                   413086 ops/s ║
+║ Concurrency status  :             CLEAN (no crashes) ║
+╠══════════════════════════════════════════════════════╣
+║  Thread  │   Ops   │ Alloc │ Free  │  Time(ms)      ║
+║──────────┼─────────┼───────┼───────┼────────────────║
+║  T0      │     500 │   309 │   192 │         8.989  ║
+║  T1      │     500 │   318 │   186 │         9.581  ║
+║  T2      │     500 │   315 │   200 │         9.620  ║
+║  T3      │     500 │   327 │   222 │         9.602  ║
+║  T4      │     500 │   328 │   182 │         9.406  ║
+║  T5      │     500 │   333 │   192 │         9.089  ║
+║  T6      │     500 │   322 │   190 │         9.276  ║
+║  T7      │     500 │   327 │   178 │         9.104  ║
+╚══════════════════════════════════════════════════════╝
+
+> > Unknown command: #
+> [ThreadBench] Running 4 threads × 1000 ops (cache stress)...
+
+╔══════════════════════════════════════════════════════╗
+║        Multithreaded Stress Test Report             ║
+╠══════════════════════════════════════════════════════╣
+║ Threads             :                              4 ║
+║ Total operations    :                           4000 ║
+║ Allocations         :                              0 ║
+║ Frees               :                              0 ║
+║ Reads               :                           2809 ║
+║ Writes              :                           1191 ║
+║ Alloc failures      :                              0 ║
+╠══════════════════════════════════════════════════════╣
+║ Wall-clock time     :                       1.870 ms ║
+║ Avg per-thread time :                       1.813 ms ║
+║ Throughput          :                  2138561 ops/s ║
+║ Concurrency status  :             CLEAN (no crashes) ║
+╠══════════════════════════════════════════════════════╣
+║  Thread  │   Ops   │ Alloc │ Free  │  Time(ms)      ║
+║──────────┼─────────┼───────┼───────┼────────────────║
+║  T0      │    1000 │     0 │     0 │         1.809  ║
+║  T1      │    1000 │     0 │     0 │         1.809  ║
+║  T2      │    1000 │     0 │     0 │         1.817  ║
+║  T3      │    1000 │     0 │     0 │         1.818  ║
+╚══════════════════════════════════════════════════════╝
+
+> > Unknown command: #
+> Allocator set to Buddy System.
+> [ThreadBench] Running 4 threads × 200 ops (allocator stress)...
+
+╔══════════════════════════════════════════════════════╗
+║        Multithreaded Stress Test Report             ║
+╠══════════════════════════════════════════════════════╣
+║ Threads             :                              4 ║
+║ Total operations    :                            800 ║
+║ Allocations         :                            514 ║
+║ Frees               :                            332 ║
+║ Reads               :                              0 ║
+║ Writes              :                              0 ║
+║ Alloc failures      :                            182 ║
+╠══════════════════════════════════════════════════════╣
+║ Wall-clock time     :                       1.323 ms ║
+║ Avg per-thread time :                       1.240 ms ║
+║ Throughput          :                   604839 ops/s ║
+║ Concurrency status  :             CLEAN (no crashes) ║
+╠══════════════════════════════════════════════════════╣
+║  Thread  │   Ops   │ Alloc │ Free  │  Time(ms)      ║
+║──────────┼─────────┼───────┼───────┼────────────────║
+║  T0      │     200 │   123 │    82 │         1.248  ║
+║  T1      │     200 │   134 │    77 │         1.287  ║
+║  T2      │     200 │   126 │    79 │         1.174  ║
+║  T3      │     200 │   131 │    94 │         1.249  ║
+╚══════════════════════════════════════════════════════╝
+
+> > Unknown command: #
+> Allocator set to Slab Allocator.
+> [ThreadBench] Running 4 threads × 200 ops (allocator stress)...
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+[Slab] Error: Out of memory, cannot allocate new page slab.
+
+╔══════════════════════════════════════════════════════╗
+║        Multithreaded Stress Test Report             ║
+╠══════════════════════════════════════════════════════╣
+║ Threads             :                              4 ║
+║ Total operations    :                            800 ║
+║ Allocations         :                            523 ║
+║ Frees               :                            317 ║
+║ Reads               :                              0 ║
+║ Writes              :                              0 ║
+║ Alloc failures      :                            206 ║
+╠══════════════════════════════════════════════════════╣
+║ Wall-clock time     :                       1.019 ms ║
+║ Avg per-thread time :                       0.922 ms ║
+║ Throughput          :                   785180 ops/s ║
+║ Concurrency status  :             CLEAN (no crashes) ║
+╠══════════════════════════════════════════════════════╣
+║  Thread  │   Ops   │ Alloc │ Free  │  Time(ms)      ║
+║──────────┼─────────┼───────┼───────┼────────────────║
+║  T0      │     200 │   132 │    82 │         0.988  ║
+║  T1      │     200 │   132 │    76 │         0.813  ║
+║  T2      │     200 │   130 │    77 │         0.937  ║
+║  T3      │     200 │   129 │    82 │         0.950  ║
+╚══════════════════════════════════════════════════════╝
+
+> > 
+=== Page-Backed Slab Allocator Statistics ===
+Total Memory Pool : 4096 bytes (64 pages)
+Slab Pages Used   : 64/64 pages (4096 bytes, 100%)
+Active Allocations: 0
+
+Cache     Pages   Slabs   Used/Total  Allocs    Frees   Int. Frag     
+----------------------------------------------------------------------
+8B        16      1       0/128       4         4       -             
+32B       16      1       0/32        79        79      -             
+64B       16      1       0/16        134       134     -             
+128B      16      1       0/8         100       100     -             
+----------------------------------------------------------------------
+Slab Space Utilization: 0.0%
+Slab Internal Waste   : 4096 bytes (unused slots across allocated slab pages)
+=============================================
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=74    | Misses=4457  | Hit Rate=  1.63%
+L2 Stats: Hits=220   | Misses=4284  | Hit Rate=  4.88%
+L3 Stats: Hits=414   | Misses=3953  | Hit Rate=  9.54%
+----------------------------------
+VM: Hits=138, Faults=400, Disk=592
+
+--- mmap Statistics ---
+Total mmap calls   : 0
+Total munmap calls : 0
+Total mprotect     : 0
+Active regions     : 0
+Active mapped bytes: 0
+Total mapped       : 0 bytes
+Total unmapped     : 0 bytes
+----------------------
+> 

@@ -1,0 +1,163 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|slab|first_fit|best_fit|worst_fit>
+   - set pagetable <flat|multilevel>
+   - set viz <on|off>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - mmap <length> [r|rw|rwx] [file <name>]
+   - munmap <addr> | mprotect <addr> <r|rw|rwx|none>
+   - mmap list | create_file <name> <size>
+   - bench generate <pattern> <count> [addr_range]
+   - bench load <file> | bench run | bench report
+   - bench threaded <threads> <ops>  (full pipeline stress)
+   - bench alloc_stress <threads> <ops>
+   - bench cache_stress <threads> <ops>
+   - viz memory|frag|cache|mmap|all
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 4096 bytes.
+[System] Page-Level Buddy Memory Initialized: 4096 bytes (64 pages, Order 6).
+[System] Page-Backed Slab Allocator Initialized: 4096 bytes (64 pages).
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes (16 pages)
+Physical memory initialized to 4096 bytes.
+> Allocator set to Linear (first_fit).
+> Cache replacement policy set to LRU for all levels.
+> Page replacement policy set to LRU.
+> [MMU] Switched to 4-level page table (24-bit VA, 16777216 bytes virtual).
+> > Allocated block id=1 at address=0x0000
+> Allocated block id=2 at address=0x0064
+> Allocated block id=3 at address=0x012c
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> > Total memory: 4096
+Used memory: 364
+Internal fragmentation: 0
+External fragmentation: 0%
+Allocation success rate: 100%
+Memory utilization: 9%
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=00000 | Misses=80000 | Hit Rate=000.00%
+L2 Stats: Hits=20000 | Misses=60000 | Hit Rate=025.00%
+L3 Stats: Hits=00000 | Misses=60000 | Hit Rate=000.00%
+----------------------------------
+VM: Hits=2, Faults=6, Disk=6
+
+--- 4-Level Page Table Statistics ---
+Total Page Walks     : 14
+Total Walk Cost      : 56 memory accesses
+Avg Walk Cost        : 4.00 accesses/walk
+Page Tables Allocated: 4
+------------------------------------
+
+--- mmap Statistics ---
+Total mmap calls   : 0
+Total munmap calls : 0
+Total mprotect     : 0
+Active regions     : 0
+Active mapped bytes: 0
+Total mapped       : 0 bytes
+Total unmapped     : 0 bytes
+----------------------
+> > Block 1 freed.
+> Block 2 freed.
+> > Allocated block id=4 at address=0x0000
+> Allocated block id=5 at address=0x0050
+> > 
+[1m[36m  ╔══════════════════════════════════════════════╗
+  ║      Linear Allocator Memory Map             ║
+  ╚══════════════════════════════════════════════╝[0m
+
+  [90mMemory Map (1 cell = 64B page):[0m
+  [43m[37m4[0m[42m[37m5[0m[42m[37m5[0m[42m[37m5[0m[46m[37m3[0m[46m[37m3[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m[32m░[0m
+
+  [32m░[0m = FREE    [41m[37m [0m = USED (id shown)
+
+  [1mBlock Detail:[0m
+  [0x0000 - 0x004f]     80B  [31mUSED id=4[0m
+  [0x0050 - 0x00e5]    150B  [31mUSED id=5[0m
+  [0x00e6 - 0x012b]     70B  [32mFREE[0m
+  [0x012c - 0x016b]     64B  [31mUSED id=3[0m
+  [0x016c - 0x0fff]   3732B  [32mFREE[0m
+
+> 
+[1m[33m  ╔══════════════════════════════════════════════╗
+  ║       Fragmentation Analysis                 ║
+  ╚══════════════════════════════════════════════╝[0m
+
+  Memory Utilization       [[36m█[0m[36m█[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m] 7.2%
+  External Fragmentation   [[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m] 1.8%
+  Internal Fragmentation   [[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m] 0.0%
+
+  [1mDetails:[0m
+  Total: 4096B | Used: 294B | Free: 3802B
+  Free blocks: 2 | Largest free: 3732B
+  Internal waste: 0B
+
+> 
+[1m[31m  ╔══════════════════════════════════════════════╗
+  ║       Cache Hierarchy Heatmap                ║
+  ╚══════════════════════════════════════════════╝[0m
+
+  [1mL1[0m (64B, 8 sets × 1-way, 8B blocks)  Hit Rate: 0.0%
+  Sets: [41m [0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m[90m░[0m
+         [41m [0m=hot  [43m [0m=warm  [42m [0m=cool  [90m░[0m=empty
+
+  [1mL2[0m (256B, 8 sets × 2-way, 16B blocks)  Hit Rate: 25.0%
+  Sets: [41m [0m[90m░[0m[90m░[0m[90m░[0m[41m [0m[90m░[0m[90m░[0m[90m░[0m
+         [41m [0m=hot  [43m [0m=warm  [42m [0m=cool  [90m░[0m=empty
+
+  [1mL3[0m (512B, 4 sets × 4-way, 32B blocks)  Hit Rate: 0.0%
+  Sets: [41m [0m[90m░[0m[41m [0m[90m░[0m
+         [41m [0m=hot  [43m [0m=warm  [42m [0m=cool  [90m░[0m=empty
+
+> > Total memory: 4096
+Used memory: 294
+Internal fragmentation: 0
+External fragmentation: 2%
+Allocation success rate: 100%
+Memory utilization: 7%
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=0     | Misses=8     | Hit Rate=  0.00%
+L2 Stats: Hits=2     | Misses=6     | Hit Rate= 25.00%
+L3 Stats: Hits=0     | Misses=6     | Hit Rate=  0.00%
+----------------------------------
+VM: Hits=2, Faults=6, Disk=6
+
+--- 4-Level Page Table Statistics ---
+Total Page Walks     : 14
+Total Walk Cost      : 56 memory accesses
+Avg Walk Cost        : 4.00 accesses/walk
+Page Tables Allocated: 4
+------------------------------------
+
+--- mmap Statistics ---
+Total mmap calls   : 0
+Total munmap calls : 0
+Total mprotect     : 0
+Active regions     : 0
+Active mapped bytes: 0
+Total mapped       : 0 bytes
+Total unmapped     : 0 bytes
+----------------------
+> 

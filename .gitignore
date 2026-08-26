@@ -8,8 +8,6 @@ main
 src/main
 memsim
 
-# Output files (optional, if generated)
-output/
 
 # Editor configs
 .vscode/

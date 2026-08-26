@@ -1,0 +1,103 @@
+====================================================
+   Memory Management Simulator CLI Started
+   Commands:
+   - init memory <size>
+   - set cache_policy <LRU|FIFO|LFU>
+   - set page_policy <LRU|FIFO|CLOCK>
+   - set allocator <buddy|slab|first_fit|best_fit|worst_fit>
+   - set pagetable <flat|multilevel>
+   - set viz <on|off>
+   - malloc <size> | free <id> | stats
+   - read <v_addr> | write <v_addr>
+   - mmap <length> [r|rw|rwx] [file <name>]
+   - munmap <addr> | mprotect <addr> <r|rw|rwx|none>
+   - mmap list | create_file <name> <size>
+   - bench generate <pattern> <count> [addr_range]
+   - bench load <file> | bench run | bench report
+   - bench threaded <threads> <ops>  (full pipeline stress)
+   - bench alloc_stress <threads> <ops>
+   - bench cache_stress <threads> <ops>
+   - viz memory|frag|cache|mmap|all
+   - dump memory | exit
+====================================================
+> [System] Linear Memory Initialized: 4096 bytes.
+[System] Page-Level Buddy Memory Initialized: 4096 bytes (64 pages, Order 6).
+[System] Page-Backed Slab Allocator Initialized: 4096 bytes (64 pages).
+         Caches: 8, 16, 32, 64, 128, 256, 512 bytes  |  Slab size: 1024 bytes (16 pages)
+Physical memory initialized to 4096 bytes.
+> Allocator set to Linear (first_fit).
+> Cache replacement policy set to LRU for all levels.
+> Page replacement policy set to LRU.
+> > [mmap] Mapped 256 bytes at 0x800
+> [mmap] Mapped 512 bytes at 0x900
+> [mmap] Mapped 128 bytes at 0xb00
+> 
+=== mmap Region Map ===
+Start         End           Length    Prot  Flags           Backing
+----------------------------------------------------------------------
+0x80000000  0x8ff00000  256       rw-   PRIVATE ANON    [anonymous]
+0x90000000  0xaff00000  512       r--   PRIVATE ANON    [anonymous]
+0xb0000000  0xb7f00000  128       rwx   PRIVATE ANON    [anonymous]
+========================
+> > [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> [MMU] TLB Hit
+[Cache] L2 Hit
+> [MMU] Page Fault
+[Cache] RAM Miss (Fetched to Caches)
+> > [mprotect] Protection updated for 0x900
+> [MMU] TLB Hit
+[Cache] L1 Hit
+> > [munmap] Unmapped region at 0x800
+> 
+=== mmap Region Map ===
+Start         End           Length    Prot  Flags           Backing
+----------------------------------------------------------------------
+0x90000000  0xaff00000  512       rw-   PRIVATE ANON    [anonymous]
+0xb0000000  0xb7f00000  128       rwx   PRIVATE ANON    [anonymous]
+========================
+> > [mmap] File 'testfile' created (1024 bytes).
+> [mmap] Mapped 256 bytes at 0xb80
+> 
+=== mmap Region Map ===
+Start         End           Length    Prot  Flags           Backing
+----------------------------------------------------------------------
+0x90000000  0xaff00000  512       rw-   PRIVATE ANON    [anonymous]
+0xb0000000  0xb7f00000  128       rwx   PRIVATE ANON    [anonymous]
+0xb8000000  0xc7f00000  256       rw-   PRIVATE         testfile
+========================
+> > 
+[1m[35m  ╔══════════════════════════════════════════════╗
+  ║       mmap Region Visualization              ║
+  ╚══════════════════════════════════════════════╝[0m
+
+  [36m0x90000000[0m [44m [0m[44m [0m[44m [0m[44m [0m[44m [0m[44m [0m[44m [0m[44m [0m 512B [rw-] anonymous
+  [36m0xb0000000[0m [44m [0m[44m [0m 128B [rwx] anonymous
+  [36m0xb8000000[0m [44m [0m[44m [0m[44m [0m[44m [0m 256B [rw-] testfile
+
+> Total memory: 4096
+Used memory: 0
+Internal fragmentation: 0
+External fragmentation: 0%
+Allocation success rate: 0%
+Memory utilization: 0%
+
+--- Cache Hierarchy Statistics ---
+L1 Stats: Hits=1     | Misses=4     | Hit Rate= 20.00%
+L2 Stats: Hits=1     | Misses=3     | Hit Rate= 25.00%
+L3 Stats: Hits=0     | Misses=3     | Hit Rate=  0.00%
+----------------------------------
+VM: Hits=2, Faults=3, Disk=3
+
+--- mmap Statistics ---
+Total mmap calls   : 4
+Total munmap calls : 1
+Total mprotect     : 1
+Active regions     : 3
+Active mapped bytes: 896
+Total mapped       : 1152 bytes
+Total unmapped     : 256 bytes
+----------------------
+> 
