@@ -42,7 +42,7 @@ Every virtual address read/write request passes through a multi-tier memory syst
 flowchart TD
     VA[Virtual Address Request] --> MMAP_CHK{In mmap Region?}
     
-    MMAP_CHK -- Yes --> PROT_CHK{Permission Valid?<br/>R/W/X}
+    MMAP_CHK -- Yes --> PROT_CHK{"Permission Valid?<br/>R/W/X"}
     MMAP_CHK -- No --> BOUNDS_CHK{Within VA Bounds?}
     
     PROT_CHK -- No --> SEGFAULT[Protection Fault / Segfault]
@@ -59,8 +59,8 @@ flowchart TD
     PT_HIT -- No --> FAULT[Page Fault Handler]
     
     FAULT --> FREE_FRAME{Free Frame Available?}
-    FREE_FRAME -- Yes --> MAP_PAGE[Allocate & Map Frame]
-    FREE_FRAME -- No --> EVICT[Evict Page: LRU/FIFO/Clock] --> WRITEBACK{Dirty Page?}
+    FREE_FRAME -- Yes --> MAP_PAGE["Allocate & Map Frame"]
+    FREE_FRAME -- No --> EVICT["Evict Page: LRU/FIFO/Clock"] --> WRITEBACK{Dirty Page?}
     WRITEBACK -- Yes --> DISK_IO[Increment Disk I/O Count]
     WRITEBACK -- No --> MAP_PAGE
     MAP_PAGE --> TLB_FILL
@@ -74,8 +74,8 @@ flowchart TD
     L2_CACHE -- Yes --> L1_FILL[Promote to L1 Cache] --> SUCCESS
     L2_CACHE -- No --> L3_CACHE{L3 Cache Hit?}
     
-    L3_CACHE -- Yes --> L2_FILL[Promote to L2 & L1] --> SUCCESS
-    L3_CACHE -- No --> RAM_FETCH[Fetch from Main RAM] --> L3_FILL[Fill L3, L2, L1] --> SUCCESS
+    L3_CACHE -- Yes --> L2_FILL["Promote to L2 & L1"] --> SUCCESS
+    L3_CACHE -- No --> RAM_FETCH[Fetch from Main RAM] --> L3_FILL["Fill L3, L2, L1"] --> SUCCESS
 ```
 </details>
 
@@ -92,7 +92,7 @@ The simulator features an x86-style 4-level hierarchical page table (`PML4` → 
 
 ```mermaid
 flowchart LR
-    subgraph Virtual Address Decomposition
+    subgraph VA_DEC ["Virtual Address Decomposition"]
         VA[24-bit Virtual Address]
         PML4_IDX[PML4 Index: 3 bits]
         PDPT_IDX[PDPT Index: 5 bits]
@@ -107,19 +107,19 @@ flowchart LR
     VA --> PT_IDX
     VA --> OFFSET
 
-    subgraph Page Table Hierarchy Walk
-        CR3[CR3 Control Register<br/>Root PML4 Pointer] --> PML4[PML4 Table<br/>8 entries]
+    subgraph PT_WALK_SUB ["Page Table Hierarchy Walk"]
+        CR3["CR3 Control Register<br/>Root PML4 Pointer"] --> PML4["PML4 Table<br/>8 entries"]
         PML4_IDX -->|Index| PML4
-        PML4 -->|PML4E Entry| PDPT[PDPT Table<br/>32 entries]
+        PML4 -->|PML4E Entry| PDPT["PDPT Table<br/>32 entries"]
         PDPT_IDX -->|Index| PDPT
-        PDPT -->|PDPTE Entry| PD[Page Directory<br/>32 entries]
+        PDPT -->|PDPTE Entry| PD["Page Directory<br/>32 entries"]
         PD_IDX -->|Index| PD
-        PD -->|PDE Entry| PT[Page Table<br/>32 entries]
+        PD -->|PDE Entry| PT["Page Table<br/>32 entries"]
         PT_IDX -->|Index| PT
         PT -->|PTE Entry| PFN[Physical Frame Number]
     end
 
-    PFN --> PHYS[Physical Address = PFN << 6 | Offset]
+    PFN --> PHYS["Physical Address = PFN << 6 | Offset"]
 ```
 </details>
 
@@ -136,35 +136,37 @@ Three polymorphic memory allocators inherit from the unified `Allocator` interfa
 
 ```mermaid
 flowchart TD
-    REQ[Allocation / Free Request] --> SELECT{Allocator Selection}
+    REQ["Allocation / Free Request"] --> SELECT{Allocator Selection}
 
-    subgraph Linear Allocator
-        SELECT -->|linear| LIN_LOCK[std::mutex Lock]
+    subgraph LIN_ALLOC ["Linear Allocator"]
+        SELECT -->|linear| LIN_LOCK["std::mutex Lock"]
         LIN_LOCK --> SEARCH{Search Strategy}
-        SEARCH -->|First-Fit| FF[First Free Block >= Size]
-        SEARCH -->|Best-Fit| BF[Smallest Free Block >= Size]
-        SEARCH -->|Worst-Fit| WF[Largest Free Block >= Size]
-        FF & BF & WF --> SPLIT[Split Remaining Space]
-        SPLIT --> LIN_UNLOCK[std::mutex Unlock]
+        SEARCH -->|First-Fit| FF["First Free Block >= Size"]
+        SEARCH -->|Best-Fit| BF["Smallest Free Block >= Size"]
+        SEARCH -->|Worst-Fit| WF["Largest Free Block >= Size"]
+        FF --> SPLIT["Split Remaining Space"]
+        BF --> SPLIT
+        WF --> SPLIT
+        SPLIT --> LIN_UNLOCK["std::mutex Unlock"]
     end
 
-    subgraph Page-Level Buddy System
-        SELECT -->|buddy| BUD_LOCK[std::mutex Lock]
-        BUD_LOCK --> ORDER_CALC[Calculate 2^k Page Order]
+    subgraph BUD_ALLOC ["Page-Level Buddy System"]
+        SELECT -->|buddy| BUD_LOCK["std::mutex Lock"]
+        BUD_LOCK --> ORDER_CALC["Calculate 2^k Page Order"]
         ORDER_CALC --> FREE_LIST{Check Order Free List}
         FREE_LIST -- Found --> REMOVE[Pop Block]
         FREE_LIST -- Empty --> SPLIT_BUD[Recursively Split Higher Order]
         SPLIT_BUD --> REMOVE
-        REMOVE --> BUD_UNLOCK[std::mutex Unlock]
+        REMOVE --> BUD_UNLOCK["std::mutex Unlock"]
     end
 
-    subgraph Page-Backed Slab Allocator
+    subgraph SLAB_ALLOC ["Page-Backed Slab Allocator"]
         SELECT -->|slab| CACHE_LOCK[Per-Cache Mutex Lock]
-        CACHE_LOCK --> FIND_CACHE[Find Size Class: 8B..512B]
+        CACHE_LOCK --> FIND_CACHE["Find Size Class: 8B..512B"]
         FIND_CACHE --> PARTIAL{Partial Slab Available?}
         PARTIAL -- Yes --> ALLOC_SLOT[Bit Search in Slab Bitmap]
         PARTIAL -- No --> EMPTY{Empty Slab Available?}
-        EMPTY -- Yes --> MOVE_PARTIAL[Promote Empty -> Partial] --> ALLOC_SLOT
+        EMPTY -- Yes --> MOVE_PARTIAL["Promote Empty -> Partial"] --> ALLOC_SLOT
         EMPTY -- No --> POOL_LOCK[Pool Mutex Lock] --> CREATE_SLAB[Carve 16-Page Slab from RAM] --> ALLOC_SLOT
         ALLOC_SLOT --> CACHE_UNLOCK[Per-Cache Mutex Unlock]
     end
@@ -184,30 +186,44 @@ The `MMapManager` provides dynamic virtual memory mapping, region tracking, and 
 
 ```mermaid
 flowchart TD
-    BENCH[ThreadedBenchmark Engine] --> SPAWN[Spawn N Worker std::threads]
+    BENCH[ThreadedBenchmark Engine] --> SPAWN["Spawn N Worker std::threads"]
 
-    subgraph Worker Thread i
-        SPAWN --> TH_INIT[Initialize Thread-Local PRNG Seed]
-        TH_INIT --> LOOP[Operation Loop: 1..M]
-        LOOP --> CHOICE{Random Operation Choice}
+    subgraph WORKER_TH ["Worker Thread i"]
+        TH_INIT[Initialize Thread-Local PRNG Seed]
+        LOOP["Operation Loop: 1..M"]
+        CHOICE{Random Operation Choice}
         
-        CHOICE -->|20%| MALLOC[allocator->allocate]
-        CHOICE -->|10%| FREE[allocator->deallocate]
-        CHOICE -->|40%| READ[mmu.translate + cache.request]
-        CHOICE -->|30%| WRITE[mmu.translate + cache.request]
+        MALLOC["allocator->allocate"]
+        FREE["allocator->deallocate"]
+        READ["mmu.translate + cache.request"]
+        WRITE["mmu.translate + cache.request"]
         
-        MALLOC --> PER_CACHE_LOCK[Acquire Per-Cache Mutex / SpinLock]
+        PER_CACHE_LOCK["Acquire Per-Cache Mutex / SpinLock"]
+        SET_SPINLOCK["Acquire Per-Set Cache SpinLock"]
+        
+        RECORD_STAT[Record Local Thread Stats]
+
+        TH_INIT --> LOOP
+        LOOP --> CHOICE
+        
+        CHOICE -->|20%| MALLOC
+        CHOICE -->|10%| FREE
+        CHOICE -->|40%| READ
+        CHOICE -->|30%| WRITE
+        
+        MALLOC --> PER_CACHE_LOCK
         FREE --> PER_CACHE_LOCK
-        READ --> SET_SPINLOCK[Acquire Per-Set Cache SpinLock]
+        READ --> SET_SPINLOCK
         WRITE --> SET_SPINLOCK
         
-        PER_CACHE_LOCK --> RECORD_STAT[Record Local Thread Stats]
+        PER_CACHE_LOCK --> RECORD_STAT
         SET_SPINLOCK --> RECORD_STAT
         RECORD_STAT --> LOOP
     end
 
-    Worker Thread i --> JOIN[std::thread::join All]
-    JOIN --> AGGREGATE[Aggregate Ops, Elapsed Time, Ops/Sec Throughput]
+    SPAWN --> TH_INIT
+    RECORD_STAT --> JOIN["std::thread::join All"]
+    JOIN --> AGGREGATE["Aggregate Ops, Elapsed Time, Ops/Sec Throughput"]
     AGGREGATE --> REPORT[Generate Unicode Threaded Report]
 ```
 </details>
