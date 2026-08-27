@@ -8,17 +8,17 @@
 using u64 = uint64_t;
 
 // ---------- x86-style 4-level page table configuration ----------
-// Scaled-down 24-bit virtual address to keep the simulation manageable:
-//   [PML4:3][PDPT:5][PD:5][PT:5][Offset:6]
-// This yields a 16 MB virtual address space with 64-byte pages.
+// Full 48-bit virtual address for x86-64 simulation:
+//   [PML4:9][PDPT:9][PD:9][PT:9][Offset:12]
+// This yields a 256 TB virtual address space with 4KB pages.
 
 constexpr int PT_LEVELS        = 4;
-constexpr int ML_OFFSET_BITS   = 6;                          // log2(PAGE_SIZE)
-constexpr int ML_LEVEL_BITS[PT_LEVELS] = {3, 5, 5, 5};       // PML4, PDPT, PD, PT
-constexpr int ML_TOTAL_VPN_BITS = 3 + 5 + 5 + 5;             // 18
-constexpr int ML_TOTAL_VA_BITS  = ML_OFFSET_BITS + ML_TOTAL_VPN_BITS; // 24
-constexpr u64 ML_VIRTUAL_MEM_SIZE  = 1ULL << ML_TOTAL_VA_BITS;  // 16 MB
-constexpr u64 ML_PHYSICAL_MEM_SIZE = 64ULL * 1024;               // 64 KB
+constexpr int ML_OFFSET_BITS   = 12;                         // log2(PAGE_SIZE)
+constexpr int ML_LEVEL_BITS[PT_LEVELS] = {9, 9, 9, 9};       // PML4, PDPT, PD, PT
+constexpr int ML_TOTAL_VPN_BITS = 9 + 9 + 9 + 9;             // 36
+constexpr int ML_TOTAL_VA_BITS  = ML_OFFSET_BITS + ML_TOTAL_VPN_BITS; // 48
+constexpr u64 ML_VIRTUAL_MEM_SIZE  = 1ULL << ML_TOTAL_VA_BITS;  // 256 TB
+constexpr u64 ML_PHYSICAL_MEM_SIZE = 4ULL * 1024 * 1024 * 1024; // 4 GB
 
 // ---------- page-table node -----------------------------------
 

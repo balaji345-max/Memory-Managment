@@ -94,7 +94,7 @@ VirtualMemory::~VirtualMemory() {
 void VirtualMemory::set_multi_level_paging(bool enable) {
     use_multi_level = enable;
     if (enable) {
-        std::cout << "[MMU] Switched to 4-level page table (24-bit VA, "
+        std::cout << "[MMU] Switched to 4-level page table (48-bit VA, "
                   << ML_VIRTUAL_MEM_SIZE << " bytes virtual).\n";
     } else {
         std::cout << "[MMU] Switched to flat page table (" 

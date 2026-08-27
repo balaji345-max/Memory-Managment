@@ -83,7 +83,7 @@ flowchart TD
 
 ### 2. x86 4-Level Page Table Translation Flow
 
-The simulator features an x86-style 4-level hierarchical page table (`PML4` → `PDPT` → `PD` → `PT`), decomposing a 24-bit virtual address into 4 level indices plus an offset.
+The simulator features an x86-style 4-level hierarchical page table (`PML4` → `PDPT` → `PD` → `PT`), decomposing a 48-bit virtual address into 4 level indices plus an offset.
 
 ![x86 4-Level Page Table Address Translation](docs/images/x86_page_table_walk.jpg)
 
@@ -93,12 +93,12 @@ The simulator features an x86-style 4-level hierarchical page table (`PML4` → 
 ```mermaid
 flowchart LR
     subgraph VA_DEC ["Virtual Address Decomposition"]
-        VA[24-bit Virtual Address]
-        PML4_IDX[PML4 Index: 3 bits]
-        PDPT_IDX[PDPT Index: 5 bits]
-        PD_IDX[PD Index: 5 bits]
-        PT_IDX[PT Index: 5 bits]
-        OFFSET[Offset: 6 bits]
+        VA[48-bit Virtual Address]
+        PML4_IDX[PML4 Index: 9 bits]
+        PDPT_IDX[PDPT Index: 9 bits]
+        PD_IDX[PD Index: 9 bits]
+        PT_IDX[PT Index: 9 bits]
+        OFFSET[Offset: 12 bits]
     end
 
     VA --> PML4_IDX
@@ -108,18 +108,18 @@ flowchart LR
     VA --> OFFSET
 
     subgraph PT_WALK_SUB ["Page Table Hierarchy Walk"]
-        CR3["CR3 Control Register<br/>Root PML4 Pointer"] --> PML4["PML4 Table<br/>8 entries"]
+        CR3["CR3 Control Register<br/>Root PML4 Pointer"] --> PML4["PML4 Table<br/>512 entries"]
         PML4_IDX -->|Index| PML4
-        PML4 -->|PML4E Entry| PDPT["PDPT Table<br/>32 entries"]
+        PML4 -->|PML4E Entry| PDPT["PDPT Table<br/>512 entries"]
         PDPT_IDX -->|Index| PDPT
-        PDPT -->|PDPTE Entry| PD["Page Directory<br/>32 entries"]
+        PDPT -->|PDPTE Entry| PD["Page Directory<br/>512 entries"]
         PD_IDX -->|Index| PD
-        PD -->|PDE Entry| PT["Page Table<br/>32 entries"]
+        PD -->|PDE Entry| PT["Page Table<br/>512 entries"]
         PT_IDX -->|Index| PT
         PT -->|PTE Entry| PFN[Physical Frame Number]
     end
 
-    PFN --> PHYS["Physical Address = PFN << 6 | Offset"]
+    PFN --> PHYS["Physical Address = PFN << 12 | Offset"]
 ```
 </details>
 
