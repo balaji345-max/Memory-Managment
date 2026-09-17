@@ -19,6 +19,7 @@ BuddyAllocator::~BuddyAllocator() {
         }
     }
     free_lists.clear();
+    free_map.clear();
 }
 
 // Calculates power-of-two page order (Order 0 = PAGE_SIZE = 64B, Order 1 = 128B = 2 pages, etc.).
@@ -70,15 +71,18 @@ void BuddyAllocator::init(size_t size) {
             delete temp;
         }
     }
+    free_map.clear();
 
     total_size = round_to_buddy_size(size);
     total_pages = total_size / PAGE_SIZE;
 
     int max_order = order_of(total_size);
     free_lists.assign(max_order + 1, nullptr);
+    free_map.assign(total_pages, nullptr);
     next_id = 1;
 
     free_lists[max_order] = new BuddyBlock(0, total_size);
+    free_map[0] = free_lists[max_order];
 
     std::cout << "[System] Page-Level Buddy Memory Initialized: "
               << total_size << " bytes (" << total_pages << " pages, Order " << max_order << ").\n";
@@ -105,7 +109,9 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
 
     BuddyBlock* blk = free_lists[current_order];
     free_lists[current_order] = blk->next;
+    if (blk->next) blk->next->prev = nullptr;
     blk->next = nullptr;
+    free_map[blk->address / PAGE_SIZE] = nullptr;
 
     // Split down to the required page order
     while (current_order > req_order) {
@@ -117,7 +123,9 @@ int BuddyAllocator::allocate(size_t size, Alloc_Algo) {
         blk->page_count = half / PAGE_SIZE;
 
         buddy->next = free_lists[current_order];
+        if (free_lists[current_order]) free_lists[current_order]->prev = buddy;
         free_lists[current_order] = buddy;
+        free_map[buddy->address / PAGE_SIZE] = buddy;
     }
 
     blk->id = next_id++;
@@ -144,17 +152,15 @@ void BuddyAllocator::deallocate(int id) {
 
         if (order == -1 || order >= static_cast<int>(free_lists.size()) - 1) break;
 
-        BuddyBlock* prev = nullptr;
-        BuddyBlock* curr = free_lists[order];
+        BuddyBlock* curr = free_map[buddy_addr / PAGE_SIZE];
+        if (!curr || curr->size != size) break;
 
-        while (curr && curr->address != buddy_addr) {
-            prev = curr;
-            curr = curr->next;
-        }
-        if (!curr) break;
-
-        if (prev) prev->next = curr->next;
+        if (curr->prev) curr->prev->next = curr->next;
         else free_lists[order] = curr->next;
+
+        if (curr->next) curr->next->prev = curr->prev;
+
+        free_map[buddy_addr / PAGE_SIZE] = nullptr;
 
         delete curr;
 
@@ -166,7 +172,9 @@ void BuddyAllocator::deallocate(int id) {
     if (final_order != -1 && final_order < static_cast<int>(free_lists.size())) {
         BuddyBlock* merged = new BuddyBlock(addr, size);
         merged->next = free_lists[final_order];
+        if (free_lists[final_order]) free_lists[final_order]->prev = merged;
         free_lists[final_order] = merged;
+        free_map[addr / PAGE_SIZE] = merged;
     }
 }
 

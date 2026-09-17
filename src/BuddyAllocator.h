@@ -14,9 +14,10 @@ struct BuddyBlock {
     size_t page_count;  // Size in 64-byte pages
     int id;
     BuddyBlock* next;
+    BuddyBlock* prev;
 
     BuddyBlock(size_t addr, size_t s)
-        : address(addr), size(s), page_count(s / PAGE_SIZE), id(0), next(nullptr) {}
+        : address(addr), size(s), page_count(s / PAGE_SIZE), id(0), next(nullptr), prev(nullptr) {}
 };
 
 // Page-Level Binary Buddy Allocator (modeling Linux kernel alloc_pages).
@@ -29,6 +30,7 @@ private:
     size_t total_pages{};
     int next_id{1};
     std::vector<BuddyBlock*> free_lists;
+    std::vector<BuddyBlock*> free_map; // O(1) lookup table for free blocks
     std::unordered_map<int, BuddyBlock*> allocated;
     
     mutable std::mutex alloc_mutex;  // guards free_lists + allocated map
